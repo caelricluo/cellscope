@@ -1,0 +1,101 @@
+import Foundation
+
+/// Coordinates use the upright image's top-left origin, normalized to 0...1.
+public struct CountRegion: Codable, Equatable, Sendable {
+    public var x: Double
+    public var y: Double
+    public var width: Double
+    public var height: Double
+    public init(x: Double = 0.1, y: Double = 0.1, width: Double = 0.8, height: Double = 0.8) {
+        self.x = x; self.y = y; self.width = width; self.height = height
+    }
+    public func contains(x: Double, y: Double) -> Bool {
+        // Consistent top/left inclusive, bottom/right exclusive center rule.
+        x >= self.x && y >= self.y && x < self.x + width && y < self.y + height
+    }
+    public var isValid: Bool {
+        [x, y, width, height].allSatisfy(\.isFinite) && x >= 0 && y >= 0 &&
+        width > 0 && height > 0 && x + width <= 1.000001 && y + height <= 1.000001
+    }
+}
+
+public struct CellMarker: Codable, Identifiable, Equatable, Sendable {
+    public var id: UUID
+    public var x: Double
+    public var y: Double
+    public var radius: Double // fraction of shorter image edge
+    public var isManual: Bool
+    public var extent: CountRegion? = nil
+    public init(x: Double, y: Double, radius: Double, isManual: Bool = false, extent: CountRegion? = nil) {
+        id = UUID(); self.x = x; self.y = y; self.radius = radius; self.isManual = isManual
+        self.extent = extent
+    }
+}
+
+public struct DetectionSettings: Codable, Equatable, Sendable {
+    public var sensitivity: Double = 0.55
+    public var minimumDiameter: Double = 0.012
+    public var maximumDiameter: Double = 0.065
+    public var brightCells: Bool = false
+    public init() {}
+}
+
+public struct GrayImage: Sendable {
+    public let width: Int
+    public let height: Int
+    public let pixels: [UInt8]
+    public init(width: Int, height: Int, pixels: [UInt8]) {
+        self.width = width; self.height = height; self.pixels = pixels
+    }
+}
+
+public struct CountInputs: Codable, Equatable, Sendable {
+    public var area = "1"
+    public var depth = "0.1"
+    public var dilution = "2"
+    public var suspensionVolume = "1"
+    public var target = "100000"
+    public init() {}
+
+    public static func positiveNumber(_ text: String) -> Double? {
+        let value = Double(text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: "."))
+        guard let value, value.isFinite, value > 0 else { return nil }
+        return value
+    }
+    public func calculate(count: Int) -> CountResult? {
+        guard count >= 0,
+              let area = Self.positiveNumber(area), let depth = Self.positiveNumber(depth),
+              let dilution = Self.positiveNumber(dilution), dilution >= 1,
+              let volume = Self.positiveNumber(suspensionVolume),
+              let target = Self.positiveNumber(target) else { return nil }
+        let sampledVolumeML = area * depth / 1000
+        guard sampledVolumeML.isFinite, sampledVolumeML > 0 else { return nil }
+        let concentration = Double(count) * dilution / sampledVolumeML
+        let total = concentration * volume
+        let required = concentration > 0 ? target / concentration * 1000 : nil
+        guard concentration.isFinite, total.isFinite, required?.isFinite != false else { return nil }
+        return CountResult(concentration: concentration, totalCells: total,
+                           requiredMicroliters: required, availableMicroliters: volume * 1000)
+    }
+    public func calculateFourCorners(counts: [Int]) -> CountResult? {
+        guard counts.count == 4, counts.allSatisfy({ $0 >= 0 }) else { return nil }
+        var total = 0
+        for count in counts {
+            let next = total.addingReportingOverflow(count)
+            guard !next.overflow else { return nil }
+            total = next.partialValue
+        }
+        var inputs = self
+        inputs.area = "4" // Sum / 4 mm² equals mean / 1 mm²; no rounding of the mean.
+        return inputs.calculate(count: total)
+    }
+}
+
+public struct CountResult: Sendable {
+    public let concentration: Double
+    public let totalCells: Double
+    public let requiredMicroliters: Double?
+    public let availableMicroliters: Double
+    public var exceedsAvailable: Bool { (requiredMicroliters ?? 0) > availableMicroliters }
+}
