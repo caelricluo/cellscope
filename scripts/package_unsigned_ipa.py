@@ -12,7 +12,7 @@ import zipfile
 
 
 def package(archive: Path, output: Path) -> Path:
-    app = archive / "Products/Applications/CellScope.app"
+    app = archive / "Products/Applications/cellscope.app"
     with (app / "Info.plist").open("rb") as file:
         info = plistlib.load(file)
     if info.get("CFBundleSupportedPlatforms") != ["iPhoneOS"]:
@@ -30,7 +30,7 @@ def package(archive: Path, output: Path) -> Path:
     if not all(c.isalnum() or c in ".-_" for c in version):
         raise ValueError("Invalid version for artifact filename.")
     output.mkdir(parents=True, exist_ok=True)
-    ipa = output / f"CellScope-{version}-unsigned.ipa"
+    ipa = output / f"cellscope-{version}-unsigned.ipa"
     with tempfile.TemporaryDirectory(prefix="cellscope-ipa-") as temporary:
         payload = Path(temporary) / "Payload"
         payload.mkdir()
@@ -39,12 +39,19 @@ def package(archive: Path, output: Path) -> Path:
     with zipfile.ZipFile(ipa) as archive_zip:
         if archive_zip.testzip() is not None:
             raise ValueError("IPA ZIP integrity validation failed.")
-        packed_info = plistlib.loads(archive_zip.read("Payload/CellScope.app/Info.plist"))
+        packed_info = plistlib.loads(archive_zip.read("Payload/cellscope.app/Info.plist"))
+        for language in ["en", "zh-Hans"]:
+            if f"Payload/cellscope.app/{language}.lproj/Localizable.strings" not in archive_zip.namelist():
+                raise ValueError(f"Missing application localization: {language}")
         if packed_info["CFBundleIdentifier"] != info["CFBundleIdentifier"]:
             raise ValueError("Packaged bundle identifier does not match the archive.")
     digest = hashlib.sha256(ipa.read_bytes()).hexdigest()
     manifest = {
         "artifact": ipa.name,
+        "displayName": info["CFBundleDisplayName"],
+        "languages": info.get("CFBundleLocalizations", []),
+        "author": "caelricluo",
+        "coAuthor": "Codex GPT-6.1 Sol",
         "version": version,
         "build": info["CFBundleVersion"],
         "bundleIdentifier": info["CFBundleIdentifier"],

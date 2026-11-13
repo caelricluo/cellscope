@@ -3,9 +3,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p dist build-release
-archive_path="$PWD/build-release/CellScope.xcarchive"
+archive_path="$PWD/build-release/cellscope.xcarchive"
 log_path="$PWD/build-release/archive.log"
-if ! xcodebuild -project CellScope.xcodeproj -scheme CellScope \
+if ! xcodebuild -project cellscope.xcodeproj -scheme cellscope \
     -configuration Release -destination 'generic/platform=iOS' \
     -archivePath "$archive_path" -derivedDataPath "$PWD/build-release/DerivedData" \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive > "$log_path" 2>&1; then

@@ -1,5 +1,5 @@
 // macOS diagnostic runner using the same CoreGraphics grayscale conversion as the app.
-// swiftc -O Sources/CellCounterCore/*.swift scripts/analyze_image.swift -o /tmp/cellscope-analyze
+// swiftc -O Sources/cellscopeCore/*.swift scripts/analyze_image.swift -o /tmp/cellscope-analyze
 // /tmp/cellscope-analyze image.jpg result.json [redBloodCells|overview|singleLarge|custom]
 import Foundation
 import CoreGraphics
@@ -8,13 +8,13 @@ import ImageIO
 @main struct AnalyzeImage {
     static func main() throws {
         guard CommandLine.arguments.count >= 3 else {
-            throw NSError(domain:"CellScope",code:1,userInfo:[NSLocalizedDescriptionKey:"Usage: analyze image.jpg result.json [mode]"])
+            throw NSError(domain:"cellscope",code:1,userInfo:[NSLocalizedDescriptionKey:"Usage: analyze image.jpg result.json [mode]"])
         }
         let sourceURL = URL(fileURLWithPath:CommandLine.arguments[1])
         guard let source = CGImageSourceCreateWithURL(sourceURL as CFURL,nil),
               let cg = CGImageSourceCreateThumbnailAtIndex(source,0,[kCGImageSourceCreateThumbnailFromImageAlways:true,
                 kCGImageSourceCreateThumbnailWithTransform:true,kCGImageSourceThumbnailMaxPixelSize:1600] as CFDictionary) else {
-            throw NSError(domain:"CellScope",code:2,userInfo:[NSLocalizedDescriptionKey:"Cannot decode image"])
+            throw NSError(domain:"cellscope",code:2,userInfo:[NSLocalizedDescriptionKey:"Cannot decode image"])
         }
         let w = cg.width,h = cg.height
         var pixels = [UInt8](repeating:0,count:w*h)

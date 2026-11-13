@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "CellCounterCore",
+    name: "cellscope",
     platforms: [.macOS(.v13), .iOS(.v17)],
-    products: [.library(name: "CellCounterCore", targets: ["CellCounterCore"])],
+    products: [.library(name: "cellscopeCore", targets: ["cellscopeCore"])],
     targets: [
-        .target(name: "CellCounterCore"),
-        .testTarget(name: "CellCounterCoreTests", dependencies: ["CellCounterCore"])
+        .target(name: "cellscopeCore"),
+        .testTarget(name: "cellscopeCoreTests", dependencies: ["cellscopeCore"])
     ]
 )

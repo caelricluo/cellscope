@@ -1,0 +1,2 @@
+"CFBundleDisplayName" = "cellscope";
+"NSCameraUsageDescription" = "采集显微镜图像，在设备上识别与计数细胞。";

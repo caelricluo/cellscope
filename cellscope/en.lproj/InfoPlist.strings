@@ -1,0 +1,2 @@
+"CFBundleDisplayName" = "cellscope";
+"NSCameraUsageDescription" = "Capture microscope images for on-device cell counting.";

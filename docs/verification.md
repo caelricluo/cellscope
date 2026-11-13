@@ -1,73 +1,29 @@
-# 验证记录 · 2026-11-13
+# Verification / 验证记录
 
-## 0.3.0 追加验证
+## English
 
-- 24 项核心测试通过；5 项 UI 流程分别通过，涵盖手机拖动角点、像素微调、重置、实时参数、即时计算及保存恢复。
-- 参数测试验证数量 49→0→49，浓度同步更新；不点击重新检测，不勾选面积或复核开关。
-- iOS Simulator、Mac Catalyst、iPhoneOS arm64 Release 均编译成功，IPA 版本 0.3.0/build 3。
-- Mac 预览实际导入原图并拖动滑块，标记、数量、浓度与取液量联动变化。
-- 交互细节、手机截图及测试包位置见 [实时交互更新](live-interaction.md)。
+Version **0.4.0** is verified with Xcode 27.2 and an iPhone 17 Pro simulator running iOS 26.4.
 
-## 0.2.0 追加验证
+- **24 core tests passed:** volume and concentration formulas; dilution validation; four-corner mean precision; grid areas; boundary and cluster behavior; small phase-contrast fixtures; grid geometry; frame movement; legacy data compatibility.
+- **6 UI workflows passed:** automatic alignment and direct calculation; marker edits and sample restoration; English localization and co-author attribution; frame dragging/nudging/reset; live parameters and concentration updates; counting modes and four-corner averaging.
+- **236 localization keys validated** in English and Simplified Chinese, including matching formatted argument placeholders.
+- iOS Simulator, iPhoneOS arm64 Release and Mac Catalyst builds completed successfully.
 
-- 21 项核心测试，0 失败；覆盖小型相差环、网格定位、三线中线、四边形及旧数据兼容。
-- iOS Simulator Release 编译与 3 项 UI 流程通过，新增自动定位后重新确认面积流程。
-- Mac Catalyst Release 编译通过，并通过实际界面从文件导入用户原图：10× 模式提示不匹配，切换中央红细胞模式后五中格 39 个，改选全部 25 中格后 207 个；全屏确认边框与标记可见。
-- 最终 UI 结果包：`TestResults/DetectionV2Release.xcresult`，3 项测试，0 失败，约 165 秒。
-- 用户原图本地 Swift 回归：中央区域 207 个候选，红细胞标准五中格 39 个；完整网格与局部对照说明见 [图像回归](image-analysis.md)。
-- iPhoneOS arm64 未签名 IPA 重新打包为 0.2.0；安装仍需有效 Apple 签名。
+Live parameter tests exercise a 49→0→49 count sequence and corresponding concentration updates without a manual recount or confirmation switch. The English workflow verifies the translated count, settings and **Codex GPT-6.1 Sol** attribution.
 
-以下为 0.1.0 原有流程的详细记录，本轮保留回归覆盖。
+The source includes deterministic synthetic fixtures. Representative microscopy-image checks are separate from the automated fixture suite; no dataset-level accuracy claim is made.
 
-## 环境
+Screenshots: [English settings](screenshots/cellscope-en.png), [Chinese settings](screenshots/live-parameters.png), [frame controls](screenshots/frame-handles.png), [calculation](screenshots/calculation.png).
 
-- Xcode 27.2 / Swift 6.4.2
-- 最低部署版本：iOS 17
-- iPhone 17 Pro 模拟器 / iOS 26.4
+## 简体中文
 
-## 已通过
+**0.4.0** 使用 Xcode 27.2、iPhone 17 Pro 模拟器及 iOS 26.4 验证。
 
-- `swift test`：14 个测试，0 失败（含新增 Neubauer 模式测试）。
-- iOS Simulator Debug 编译成功。
-- iPhoneOS arm64 Release 编译成功（未签名，尚未安装真机）。
-- XCUITest：2 个流程测试通过，0 失败；新增模式流程另做最终回归，约 115 秒。
+- **24 项核心测试通过**：体积与浓度公式、稀释参数、四角平均精度、网格面积、压线与团块、小型相差目标、网格几何、边框移动及旧数据兼容。
+- **6 项 UI 流程通过**：自动对齐与直接计算、标记编辑与样本恢复、英文界面与共同作者署名、边框拖动/微调/重置、实时参数与浓度联动、计数模式与四角平均。
+- **236 项中英文资源校验通过**，格式化参数占位符保持一致。
+- iOS 模拟器、iPhoneOS arm64 Release 及 Mac Catalyst 编译通过。
 
-端到端验证实际执行了：
+实时参数测试覆盖数量 49→0→49 和浓度同步更新，不点击重新检测或确认开关。英文流程验证译文、计数、参数面板及 **Codex GPT-6.1 Sol** 署名。
 
-1. 启动应用并载入合成图，由正式检测代码检出 49 个候选。
-2. 打开全屏图像并检查绘制的圆圈与细胞中心位置。
-3. 删除一个标记，数量变为 48；撤销恢复 49。
-4. 手动补标，数量变为 50；撤销恢复 49。
-5. 人工复核后确认原液浓度为 980,000 cells/mL，100,000 个细胞需要约 102.04 µL。
-6. 保存记录，结束应用进程并重启，检查记录仍存在。
-
-Neubauer 模式追加验证：
-
-1. 4× 全九格实际检测 81 个，选择四角后重新检测为 36 个；面积分别为 9 / 4 mm²。
-2. 红细胞模式实际检测所选五中格中的 20 个候选，面积 0.2 mm²，未选区域不进入计数。
-3. 10× 四张模拟图分别检测为 49 个，四角平均为 49。
-4. 仅将左上图删除一个标记，得到 48、49、49、49；平均为 48.75，默认 2 倍稀释时浓度为 975,000 cells/mL。
-5. 逐角人工复核后保存、退出、重启。直接检查记录元数据和四张图像文件，确认四个独立计数均正确保存，整组有效面积为 4 mm²。
-6. 核心单元测试验证压线上/左纳入、下/右排除、中心在外但边缘触及上/左时纳入、相邻格不重复、相连双细胞团块只输出一个候选，以及旧标记缺少边缘数据时仍能解码。
-
-另已加入相册异步导入的角位/模式检查，防止照片读取期间切换角位后归错照片；最终 iOS Simulator 和 Mac Catalyst 编译均通过。此异步取消提示尚未单独进行 UI 自动化复现。
-
-结果包：`TestResults/Neubauer.xcresult`（两项流程）和 `TestResults/NeubauerFinal.xcresult`（新增流程最终回归，含截图）。本地生成文件已加入 gitignore。
-
-## 实际界面
-
-- [首页](screenshots/home.png)
-- [全屏候选细胞标记](screenshots/detection.png)
-- [浓度与取液计算](screenshots/calculation.png)
-- [4× 完整 Neubauer 九宫格](screenshots/neubauer-4x.png)
-- [红细胞五中格高亮](screenshots/neubauer-rbc.png)
-
-## 验证边界
-
-- 后续发现本机 Device Hub 创建模拟器显示窗口时会崩溃。已提供并实际操作验证独立 Mac Catalyst 预览；这不代表 iOS 模拟器 GUI 故障已修复。见 [启动问题排查](startup-diagnosis.md)。
-
-- 合成图只验证代码流程、基础检测和坐标绘制，不代表真实样本上的准确率。
-- 尚未在物理 iPhone 上测试相机权限、目镜拍摄与实际成像质量。
-- CSV 与标记图导出已实现并编译，系统分享目的地的实际文件交付尚未逐项实测。
-- 10× 模拟图的四张图使用同一合成图形用于流程验证；不代表四个真实视野的变异性。真实照片需逐角分别采集并复核。
-- 真实细胞的粘连、失焦、倾斜网格与杂质，需要用实际样本对照人工计数评估和调参。
+自动测试使用确定性合成样本。代表性显微图像检查独立于该测试集，不据此给出数据集准确率结论。界面截图见上方链接。

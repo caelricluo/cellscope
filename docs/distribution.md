@@ -1,45 +1,37 @@
-# GitHub 发布与 IPA 打包
+# Distribution / 发布与分发
 
-源码仓库：`caelricluo/Cellcounter`（私有）。
+## English
 
-## 当前 IPA 的性质
-
-本次交付为 **iPhoneOS arm64 Release 未签名 IPA**，文件名包含 `unsigned`。它不是模拟器 App，也不是可直接安装到普通 iPhone 的发行包。
-
-本机没有可用 iOS 签名证书和 provisioning profile，因此没有生成安装授权，也没有发布到 TestFlight 或 App Store。安装前需要使用有效 Apple 签名及与 App 标识、设备或分发方式匹配的 provisioning profile。请不要把证书私钥、`.p12`、`.p8` 或开发者账号密码提交到 Git。
-
-Apple 官方流程见 [创建 App Archive](https://help.apple.com/xcode/mac/current/en.lproj/devf37a1db04.html) 和 [导出 iOS App](https://help.apple.com/xcode/mac/current/en.lproj/dev23ea8b877.html)。
-
-## 可重现构建
+Build the unsigned iPhoneOS arm64 package on macOS:
 
 ```sh
 scripts/build_unsigned_ipa.sh
 ```
 
-脚本从当前 iOS 工程执行 `Release` Archive，然后校验并打包：
+Outputs:
 
-- Archive：`build-release/CellScope.xcarchive`
-- 详细编译日志：`build-release/archive.log`
-- IPA：`dist/CellScope-<version>-unsigned.ipa`
-- 清单：`dist/CellScope-<version>-unsigned.json`
-- SHA-256：`dist/CellScope-<version>-unsigned.ipa.sha256`
+- `build-release/cellscope.xcarchive`
+- `dist/cellscope-<version>-unsigned.ipa`
+- `dist/cellscope-<version>-unsigned.json`
+- `dist/cellscope-<version>-unsigned.ipa.sha256`
 
-打包脚本校验 `iPhoneOS` 平台、`arm64` 架构、Mach-O iOS 平台标记、无 provisioning profile、无 `_CodeSignature`，并检查 ZIP 完整性和 Bundle Identifier。不会使用模拟器产物冒充 IPA。
-
-校验下载文件：
+The packager checks the iPhoneOS platform, arm64 architecture, Mach-O platform metadata, bundle identifier and ZIP integrity. The JSON manifest records the version, build number, size and SHA-256 digest.
 
 ```sh
 cd dist
-shasum -a 256 -c CellScope-0.3.0-unsigned.ipa.sha256
+shasum -a 256 -c cellscope-0.4.0-unsigned.ipa.sha256
 ```
 
-GitHub Release 附件提供 IPA、清单及校验文件；源码和构建脚本通过 Git 管理。构建目录、IPA、证书、私钥和个人 Xcode 状态均被 `.gitignore` 排除。
+For device distribution, configure the development team and provisioning settings in Xcode, create a signed archive and export using the chosen Apple distribution method. Unsigned artifacts are provided for building and subsequent signing.
 
-## 之后生成可安装的版本
+Current source and releases: [caelricluo/cellscope](https://github.com/caelricluo/cellscope).
 
-1. 在 Xcode 中登录你自己的 Apple 开发者账号。
-2. 为 iOS target 设置 Team 和你拥有的唯一 Bundle Identifier。
-3. 根据开发、已注册设备、TestFlight 或 App Store 分发需求准备签名资产。
-4. 重新创建已签名 Archive，在 Organizer 中选择相应分发方式导出；也可使用自己的 `ExportOptions.plist` 调用 `xcodebuild -exportArchive`。
+## 简体中文
 
-未签名构建使用的 `CODE_SIGNING_ALLOWED=NO` 仅用于这次源码交付；正式签名构建需要移除此覆盖参数。
+在 macOS 上执行上述脚本，生成未签名 iPhoneOS arm64 IPA、JSON 清单和 SHA-256 文件。产物路径及校验命令见上文。
+
+打包器验证 iPhoneOS 平台、arm64 架构、Mach-O 平台信息、Bundle Identifier 与 ZIP 完整性。JSON 清单记录版本、构建号、文件大小和 SHA-256。
+
+真机分发在 Xcode 中配置开发团队和描述文件，创建已签名 Archive，并按所选 Apple 分发方式导出。未签名产物用于后续构建和签名。
+
+源码与发行文件：[caelricluo/cellscope](https://github.com/caelricluo/cellscope)。
