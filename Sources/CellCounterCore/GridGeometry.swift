@@ -77,3 +77,41 @@ public struct GridQuad: Codable, Equatable, Sendable {
         return result
     }
 }
+
+public enum GridHandle: Int, CaseIterable, Identifiable, Sendable {
+    case topLeft, top, topRight, right, bottomRight, bottom, bottomLeft, left, move
+    public var id: Int { rawValue }
+    public var title: String {
+        switch self {
+        case .topLeft: "左上角"; case .top: "上边"; case .topRight: "右上角"; case .right: "右边"
+        case .bottomRight: "右下角"; case .bottom: "下边"; case .bottomLeft: "左下角"; case .left: "左边"; case .move: "整体"
+        }
+    }
+    var indices: [Int] {
+        switch self {
+        case .topLeft: [0]; case .top: [0,1]; case .topRight: [1]; case .right: [1,2]
+        case .bottomRight: [2]; case .bottom: [2,3]; case .bottomLeft: [3]; case .left: [3,0]; case .move: [0,1,2,3]
+        }
+    }
+    public func point(in quad: GridQuad) -> GridPoint {
+        let p = indices.map { quad.corners[$0] }
+        return GridPoint(x:p.map(\.x).reduce(0,+)/Double(p.count), y:p.map(\.y).reduce(0,+)/Double(p.count))
+    }
+}
+
+extension GridQuad {
+    /// Apply a normalized image displacement to a corner, edge, or the whole
+    /// frame, clamping the selected points together at the image boundary.
+    public func adjusting(_ handle: GridHandle, dx: Double, dy: Double) -> GridQuad {
+        guard isValid, dx.isFinite, dy.isFinite else { return self }
+        var p = corners
+        let selected = handle.indices.map { p[$0] }
+        let x = min(1-selected.map(\.x).max()!,max(-selected.map(\.x).min()!,dx))
+        let y = min(1-selected.map(\.y).max()!,max(-selected.map(\.y).min()!,dy))
+        for i in handle.indices { p[i].x += x; p[i].y += y }
+        let result = GridQuad(topLeft:p[0],topRight:p[1],bottomRight:p[2],bottomLeft:p[3])
+        guard result.isValid, result.bounds.width >= 0.04, result.bounds.height >= 0.04 else { return self }
+        for i in 0..<4 where hypot(p[i].x-p[(i+1)%4].x,p[i].y-p[(i+1)%4].y)<0.025 { return self }
+        return result
+    }
+}

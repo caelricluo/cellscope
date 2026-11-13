@@ -30,7 +30,7 @@ scripts/build_unsigned_ipa.sh
 
 ```sh
 cd dist
-shasum -a 256 -c CellScope-0.2.0-unsigned.ipa.sha256
+shasum -a 256 -c CellScope-0.3.0-unsigned.ipa.sha256
 ```
 
 GitHub Release 附件提供 IPA、清单及校验文件；源码和构建脚本通过 Git 管理。构建目录、IPA、证书、私钥和个人 Xcode 状态均被 `.gitignore` 排除。

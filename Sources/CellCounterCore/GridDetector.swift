@@ -8,8 +8,8 @@ public struct GridDetection: Sendable {
     public var summary: String {
         if overview != nil { return "已定位完整九宫格及中央密集网格" }
         if central != nil { return "已定位中央 5×5 中格；未定位到完整九宫格外框" }
-        if corner != nil { return "已定位 4×4 分格的大格候选；请核对角位与实物" }
-        return "未可靠定位计数板边框，请手动框选或重新拍摄"
+        if corner != nil { return "已定位 4×4 分格网格" }
+        return "未找到网格，点击「边框」调整"
     }
     public func alignment(for mode: CountingMode) -> GridQuad? {
         switch mode { case .overview: overview; case .redBloodCells: central; case .singleLarge: corner; case .custom: nil }

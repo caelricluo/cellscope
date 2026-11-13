@@ -9,7 +9,7 @@ struct HistoryView: View {
         NavigationStack {
             Group {
                 if model.records.isEmpty {
-                    ContentUnavailableView("让每一次计数都有记录", systemImage: "tray", description: Text("复核并保存样本后，可在这里回看图像与计算参数。所有记录保存在本机。"))
+                    ContentUnavailableView("让每一次计数都有记录", systemImage: "tray", description: Text("保存样本后，在这里回看图像与计算参数。"))
                 } else {
                     List {
                         Section {

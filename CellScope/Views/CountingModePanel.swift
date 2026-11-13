@@ -31,8 +31,6 @@ struct CountingModePanel: View {
                     .font(.caption).foregroundStyle(Palette.muted)
             }.accessibilityIdentifier("countingMode-custom")
             Text(model.grid.mode.instruction).font(.caption).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
-            Text("放大倍数仅描述拍摄视野；计算按真实网格面积与腔室深度。中央 5×5 分格模板适用于改良 Neubauer。")
-                .font(.caption2).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
         }.surface().disabled(model.isDetecting)
         .confirmationDialog("切换模式会清空当前标记和四角照片记录；请先保存需要保留的样本。", isPresented: Binding(get: { pendingMode != nil }, set: { if !$0 { pendingMode = nil } }), titleVisibility: .visible) {
             Button("切换模式") { if let pendingMode { model.changeCountingMode(pendingMode) }; pendingMode = nil }
@@ -62,14 +60,14 @@ struct CornerFieldsPanel: View {
                             Text("\(position.title) \(position.rawValue)").font(.system(size: 10, weight: .medium))
                             Text(field.map { $0.state.hasAnalyzed ? "\($0.state.markers.count)" : "待计数" } ?? "待拍摄")
                                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                            Text(field?.state.reviewed == true ? "已复核" : "待复核").font(.system(size: 9))
+                            Text(field?.state.hasAnalyzed == true ? "已计数" : "").font(.system(size: 9))
                         }.frame(maxWidth: .infinity).padding(.vertical, 12)
                             .foregroundStyle(model.activeField == position ? .white : Palette.green)
                             .background(model.activeField == position ? Palette.green : Palette.paper, in: RoundedRectangle(cornerRadius: 12))
                     }.accessibilityIdentifier("field-\(position.rawValue)")
                 }
             }
-            Text("当前：\(model.activeField.title)大格。选中一个角，再拍照或导入对应图像；每张图框选完整 1 mm² 大格。四角必须来自同一样本与同一稀释条件。")
+            Text("当前：\(model.activeField.title)大格。选中一个角，再拍照或导入对应图像；每张对应 1 mm² 大格。")
                 .font(.caption2).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
             if model.completedFields == 4 {
                 Text("四角合计 \(model.totalCount) 个 ÷ 4 = 平均 \(formatted(model.meanCount)) 个/大格")
@@ -110,7 +108,7 @@ struct GridSquaresPanel: View {
             }
             Text("\(model.grid.selectedIndices.count) 格 × \(formatted(model.grid.mode.squareAreaMM2)) mm² = \(model.grid.areaText ?? "—") mm²")
                 .font(.caption.weight(.semibold)).foregroundStyle(Palette.green).accessibilityIdentifier("gridArea")
-            Text("仅高亮区域计数；更改选择会清空标记，需重新检测。三线边界按中间线对齐。")
+            Text("高亮格计入统计，选择后自动更新。三线边界取中线。")
                 .font(.caption2).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
         }.disabled(model.isDetecting)
     }

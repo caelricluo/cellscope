@@ -4,25 +4,71 @@ final class CellScopeUITests: XCTestCase {
     @MainActor private func visible(_ query: XCUIElementQuery) -> XCUIElement {
         query.allElementsBoundByIndex.first(where: { $0.isHittable }) ?? query.firstMatch
     }
-    @MainActor func testAutomaticBorderRequiresFreshAreaConfirmation() {
+    @MainActor func testAutomaticBorderCalculatesWithoutConfirmations() {
         let app = XCUIApplication(); app.launch()
         app.buttons["loadDemo"].tap()
         let count = app.staticTexts["cellCount"]
         let ready = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@", "49"),object:count)
         XCTAssertEqual(XCTWaiter.wait(for:[ready],timeout:20),.completed)
         app.buttons["locateGrid"].tap()
-        app.buttons["重新定位边框"].tap()
         let status = app.staticTexts.matching(identifier:"gridDetectionStatus").firstMatch
         let aligned = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label CONTAINS %@", "4×4"),object:status)
         XCTAssertEqual(XCTWaiter.wait(for:[aligned],timeout:20),.completed)
         let recounted = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@", "49"),object:count)
         XCTAssertEqual(XCTWaiter.wait(for:[recounted],timeout:20),.completed)
-        let confirm = app.switches["confirmArea"]
-        for _ in 0..<6 where !confirm.isHittable { app.swipeUp() }
-        XCTAssertEqual(confirm.value as? String,"0")
-        XCTAssertFalse(app.staticTexts["concentration"].exists)
-        confirm.tap()
-        XCTAssertTrue(app.staticTexts["fourFieldMean"].exists)
+        XCTAssertFalse(app.switches["confirmArea"].exists)
+        XCTAssertFalse(app.switches["已逐一复核细胞标记"].exists)
+        let concentration = app.staticTexts["concentration"]
+        for _ in 0..<6 where !concentration.isHittable { app.swipeUp() }
+        XCTAssertEqual(concentration.label,"98.00 × 10⁴")
+        XCTAssertTrue(app.buttons["saveRecord"].isEnabled)
+    }
+    @MainActor func testLiveParametersUpdateImageCountAndCalculation() {
+        let app = XCUIApplication(); app.launch()
+        app.buttons["countingMode-custom"].tap(); app.buttons["loadDemo"].tap()
+        let first = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","49"),object:app.staticTexts["cellCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[first],timeout:20),.completed)
+        app.buttons["检测参数"].tap()
+        let live = app.staticTexts["liveCellCount"]
+        XCTAssertTrue(live.waitForExistence(timeout:5))
+        let automatic = app.switches["automaticSizeToggle"]
+        automatic.coordinate(withNormalizedOffset:CGVector(dx:0.9,dy:0.5)).tap()
+        XCTAssertEqual(automatic.value as? String,"0")
+        let maximum = app.sliders["maximumDiameterSlider"]
+        for _ in 0..<4 where !maximum.isHittable { visible(app.collectionViews).swipeUp() }
+        maximum.adjust(toNormalizedSliderPosition:1)
+        let minimum = app.sliders["minimumDiameterSlider"]
+        minimum.adjust(toNormalizedSliderPosition:1)
+        let zero = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","0 个细胞"),object:live)
+        XCTAssertEqual(XCTWaiter.wait(for:[zero],timeout:20),.completed)
+        XCTAssertTrue(app.staticTexts["liveConcentration"].label.contains("0"))
+        minimum.adjust(toNormalizedSliderPosition:0)
+        let recovered = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","49 个细胞"),object:live)
+        XCTAssertEqual(XCTWaiter.wait(for:[recovered],timeout:20),.completed)
+        XCTAssertTrue(app.staticTexts["liveConcentration"].label.contains("98.00"))
+        let shot = XCTAttachment(screenshot:app.screenshot()); shot.name = "Live-parameters"; shot.lifetime = .keepAlways; add(shot)
+        app.navigationBars.buttons["完成"].tap()
+        XCTAssertFalse(app.alerts.firstMatch.exists)
+    }
+    @MainActor func testFrameHandlesDragNudgeAndRecount() {
+        let app = XCUIApplication(); app.launch()
+        app.buttons["countingMode-custom"].tap(); app.buttons["loadDemo"].tap()
+        let ready = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","49"),object:app.staticTexts["cellCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[ready],timeout:20),.completed)
+        app.buttons["mode-边框"].tap()
+        let handle = visible(app.buttons.matching(identifier:"frameHandle-0"))
+        XCTAssertTrue(handle.waitForExistence(timeout:5))
+        let start = handle.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.5))
+        start.press(forDuration:0.1,thenDragTo:start.withOffset(CGVector(dx:90,dy:90)))
+        let changed = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label != %@","49 个细胞"),object:app.staticTexts["fullscreenCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[changed],timeout:20),.completed)
+        XCTAssertTrue(app.buttons["nudge-arrow.right"].isHittable)
+        app.buttons["nudge-arrow.right"].tap()
+        let shot = XCTAttachment(screenshot:app.screenshot()); shot.name = "Frame-handles"; shot.lifetime = .keepAlways; add(shot)
+        app.buttons["重置边框"].tap()
+        let restored = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","49 个细胞"),object:app.staticTexts["fullscreenCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[restored],timeout:20),.completed)
+        app.navigationBars.buttons["完成"].tap()
     }
     @MainActor func testDemoCountingCorrectionCalculationAndHistory() {
         let app = XCUIApplication()
@@ -35,7 +81,7 @@ final class CellScopeUITests: XCTestCase {
         let finished = NSPredicate(format: "label == %@", "49")
         expectation(for: finished, evaluatedWith: count)
         waitForExpectations(timeout: 15)
-        app.buttons["全屏复核"].tap()
+        app.buttons["全屏查看"].tap()
         XCTAssertTrue(app.staticTexts["fullscreenCount"].waitForExistence(timeout: 5))
         let detection = XCTAttachment(screenshot: app.screenshot())
         detection.name = "Detection"; detection.lifetime = .keepAlways; add(detection)
@@ -47,21 +93,17 @@ final class CellScopeUITests: XCTestCase {
             dx: (frame.width - side) / 2 + side * 0.15,
             dy: (frame.height - side) / 2 + side * 0.15))
         firstCell.tap()
-        XCTAssertEqual(app.staticTexts["fullscreenCount"].label, "48 个候选细胞")
+        XCTAssertEqual(app.staticTexts["fullscreenCount"].label, "48 个细胞")
         visible(app.buttons.matching(identifier: "撤销标记修改")).tap()
-        XCTAssertEqual(app.staticTexts["fullscreenCount"].label, "49 个候选细胞")
+        XCTAssertEqual(app.staticTexts["fullscreenCount"].label, "49 个细胞")
         visible(app.buttons.matching(identifier: "mode-补标")).tap()
         canvas.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(
             dx: (frame.width - side) / 2 + side * 0.2,
             dy: (frame.height - side) / 2 + side * 0.2)).tap()
-        XCTAssertEqual(app.staticTexts["fullscreenCount"].label, "50 个候选细胞")
+        XCTAssertEqual(app.staticTexts["fullscreenCount"].label, "50 个细胞")
         visible(app.buttons.matching(identifier: "撤销标记修改")).tap()
         app.navigationBars.buttons["完成"].tap()
-        app.swipeUp()
-        let reviewed = app.switches["已逐一复核细胞标记"]
-        XCTAssertTrue(reviewed.waitForExistence(timeout: 5))
-        if reviewed.value as? String != "1" { reviewed.tap() }
-        for _ in 0..<3 { app.swipeUp() }
+        for _ in 0..<6 where !app.staticTexts["concentration"].isHittable { app.swipeUp() }
         XCTAssertTrue(app.staticTexts["concentration"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["concentration"].label, "98.00 × 10⁴")
         XCTAssertTrue(app.staticTexts["requiredVolume"].label.contains("102.04"))
@@ -87,7 +129,7 @@ final class CellScopeUITests: XCTestCase {
             XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 20), .completed)
         }
         func captureTemplate(_ name: String) {
-            app.buttons["全屏复核"].tap()
+            app.buttons["全屏查看"].tap()
             let attachment = XCTAttachment(screenshot: app.screenshot())
             attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
             app.navigationBars.buttons["完成"].tap()
@@ -95,7 +137,6 @@ final class CellScopeUITests: XCTestCase {
         expectCount("81")
         captureTemplate("Neubauer-4x")
         app.buttons["selectStandardSquares"].tap()
-        app.buttons["detectCells"].tap()
         expectCount("36")
         for _ in 0..<5 { app.swipeDown() }
         app.buttons["countingMode-redBloodCells"].tap()
@@ -106,24 +147,17 @@ final class CellScopeUITests: XCTestCase {
         expectCount("49")
         XCTAssertTrue(app.staticTexts["fourFieldMean"].label.contains("196"))
         XCTAssertTrue(app.staticTexts["fourFieldMean"].label.contains("49"))
-        app.buttons["全屏复核"].tap()
+        app.buttons["全屏查看"].tap()
         visible(app.buttons.matching(identifier: "mode-删除")).tap()
         let canvas = visible(app.scrollViews.matching(identifier: "imageCanvas"))
         let frame = canvas.frame, side = min(canvas.frame.width, canvas.frame.height)
         canvas.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(
             dx: (frame.width - side) / 2 + side * 0.15,
             dy: (frame.height - side) / 2 + side * 0.15)).tap()
-        XCTAssertEqual(app.staticTexts["fullscreenCount"].label, "48 个候选细胞")
+        XCTAssertEqual(app.staticTexts["fullscreenCount"].label, "48 个细胞")
         app.navigationBars.buttons["完成"].tap()
         XCTAssertTrue(app.staticTexts["fourFieldMean"].label.contains("48.75"))
-        for field in ["A1", "A3", "C1", "C3"] {
-            for _ in 0..<5 { app.swipeDown() }
-            app.buttons["field-\(field)"].tap()
-            let reviewed = app.switches["已逐一复核细胞标记"]
-            for _ in 0..<5 where !reviewed.isHittable { app.swipeUp() }
-            if reviewed.value as? String != "1" { reviewed.tap() }
-        }
-        for _ in 0..<4 { app.swipeUp() }
+        for _ in 0..<6 where !app.staticTexts["concentration"].isHittable { app.swipeUp() }
         XCTAssertEqual(app.staticTexts["concentration"].label, "97.50 × 10⁴")
         XCTAssertTrue(app.buttons["saveRecord"].isEnabled)
         app.buttons["saveRecord"].tap(); app.alerts.buttons["知道了"].tap()

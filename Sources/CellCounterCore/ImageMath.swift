@@ -9,6 +9,7 @@ enum ImageMath {
         var horizontal = [Float](repeating: 0, count: pixels.count)
         var output = horizontal
         for y in 0..<height {
+            if Task.isCancelled { return output }
             for x in 0..<width {
                 var value: Float = 0
                 for k in -radius...radius { value += pixels[y * width + min(width - 1, max(0, x + k))] * kernel[k + radius] }
@@ -16,6 +17,7 @@ enum ImageMath {
             }
         }
         for y in 0..<height {
+            if Task.isCancelled { return output }
             for x in 0..<width {
                 var value: Float = 0
                 for k in -radius...radius { value += horizontal[min(height - 1, max(0, y + k)) * width + x] * kernel[k + radius] }

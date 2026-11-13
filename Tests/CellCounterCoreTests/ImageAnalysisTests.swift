@@ -102,4 +102,33 @@ final class ImageAnalysisTests: XCTestCase {
         XCTAssertFalse(try JSONDecoder().decode(DetectionSettings.self,from:json).automaticSize)
         XCTAssertTrue(DetectionSettings().automaticSize)
     }
+    func testFrameTranslationClampsWithoutChangingShape() {
+        let q = GridQuad(region:CountRegion(x:0.2,y:0.3,width:0.5,height:0.4))
+        let shifted = q.adjusting(.move,dx:0.9,dy:-1)
+        XCTAssertEqual(shifted.bounds.x,0.5,accuracy:1e-12)
+        XCTAssertEqual(shifted.bounds.y,0,accuracy:1e-12)
+        XCTAssertEqual(shifted.bounds.width,0.5,accuracy:1e-12)
+        XCTAssertEqual(shifted.bounds.height,0.4,accuracy:1e-12)
+        XCTAssertTrue(shifted.isValid)
+    }
+    func testFrameCornersAndEdgesKeepPerspectiveAndRejectCrossing() {
+        let q = GridQuad(region:CountRegion(x:0.2,y:0.2,width:0.6,height:0.6))
+        let moved = q.adjusting(.topLeft,dx:0.03,dy:0.04)
+        XCTAssertEqual(moved.topLeft.x,0.23,accuracy:1e-12)
+        XCTAssertEqual(moved.topRight,q.topRight)
+        XCTAssertEqual(moved.bottomLeft,q.bottomLeft)
+        let edge = moved.adjusting(.right,dx:-0.02,dy:0)
+        XCTAssertEqual(edge.topRight.x,0.78,accuracy:1e-12)
+        XCTAssertEqual(edge.bottomRight.x,0.78,accuracy:1e-12)
+        XCTAssertEqual(q.adjusting(.topLeft,dx:0.7,dy:0.7),q)
+        XCTAssertEqual(q.adjusting(.move,dx:.nan,dy:0),q)
+    }
+    func testAutomaticSizeIgnoresUnusedManualRange() {
+        var s = DetectionSettings(); s.minimumDiameter = 0.08; s.maximumDiameter = 0.04
+        let fixture = CellCounterCoreTests().fixture()
+        XCTAssertEqual(CellDetector.detect(fixture,region:whole,settings:s).count,3)
+        s.automaticSize = false
+        XCTAssertTrue(CellDetector.detect(fixture,region:whole,settings:s).isEmpty)
+    }
+
 }

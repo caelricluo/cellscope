@@ -26,12 +26,13 @@ public enum CellDetector {
         guard w > 4, h > 4, w <= 2048, h <= 2048, image.pixels.count == w * h,
               region.isValid, settings.sensitivity.isFinite,
               settings.minimumDiameter.isFinite, settings.maximumDiameter.isFinite,
-              settings.minimumDiameter > 0, settings.maximumDiameter >= settings.minimumDiameter,
-              settings.maximumDiameter <= 1, grid?.isValid != false else { return report }
+              (settings.automaticSize || (settings.minimumDiameter > 0 && settings.maximumDiameter >= settings.minimumDiameter &&
+              settings.maximumDiameter <= 1)), grid?.isValid != false else { return report }
         let short = Double(min(w, h))
         let pixels = image.pixels.map(Float.init)
         let fine = ImageMath.gaussian(pixels, width: w, height: h, sigma: 0.7)
         let background = ImageMath.gaussian(pixels, width: w, height: h, sigma: max(2.5, short / 400))
+        guard !Task.isCancelled else { return report }
         let threshold = Float(8 + (1 - min(1, max(0, settings.sensitivity))) * 10)
         var response = [Float](repeating: 0, count: pixels.count)
         var mask = [UInt8](repeating: 0, count: pixels.count)
@@ -54,11 +55,13 @@ public enum CellDetector {
         }
         var components: [Component] = [], queue: [Int] = []
         for seed in 0..<(w*h) where mask[seed] == 1 {
+            guard !Task.isCancelled else { return report }
             report.componentsExamined += 1
             queue.removeAll(keepingCapacity: true); queue.append(seed); mask[seed] = 0
             var head = 0
             var c = Component(minX: w, minY: h, maxX: 0, maxY: 0, count: 0, sumX: 0, sumY: 0, strong: 0, original: 0)
             while head < queue.count {
+                if head % 4096 == 0 && Task.isCancelled { return report }
                 let p = queue[head]; head += 1
                 let x = p % w, y = p / w
                 c.count += 1; c.sumX += x; c.sumY += y
