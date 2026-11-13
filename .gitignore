@@ -21,3 +21,5 @@ dist/
 .env.*
 /notes.md
 /task_plan.md
+.local/
+build-sim/

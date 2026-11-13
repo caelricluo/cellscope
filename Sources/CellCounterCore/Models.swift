@@ -37,7 +37,17 @@ public struct DetectionSettings: Codable, Equatable, Sendable {
     public var minimumDiameter: Double = 0.012
     public var maximumDiameter: Double = 0.065
     public var brightCells: Bool = false
+    public var automaticSize: Bool = true
     public init() {}
+    private enum CodingKeys: String, CodingKey { case sensitivity, minimumDiameter, maximumDiameter, brightCells, automaticSize }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sensitivity = try c.decodeIfPresent(Double.self, forKey: .sensitivity) ?? 0.55
+        minimumDiameter = try c.decodeIfPresent(Double.self, forKey: .minimumDiameter) ?? 0.012
+        maximumDiameter = try c.decodeIfPresent(Double.self, forKey: .maximumDiameter) ?? 0.065
+        brightCells = try c.decodeIfPresent(Bool.self, forKey: .brightCells) ?? false
+        automaticSize = try c.decodeIfPresent(Bool.self, forKey: .automaticSize) ?? false
+    }
 }
 
 public struct GrayImage: Sendable {

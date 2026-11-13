@@ -9,6 +9,8 @@ struct CountFieldRecord: Codable {
     var areaConfirmed: Bool
     var reviewed: Bool
     var hasAnalyzed: Bool
+    var alignment: GridQuad? = nil
+    var requiresManualGrid: Bool? = nil
 }
 
 struct CapturedField {
@@ -30,6 +32,8 @@ struct CountRecord: Codable, Identifiable {
     var grid: NeubauerGrid? = nil // Older records decode as custom, preserving their area.
     var fields: [CountFieldRecord]? = nil
     var activeField: FieldPosition? = nil
+    var alignment: GridQuad? = nil
+    var requiresManualGrid: Bool? = nil
     var imageName: String { id.uuidString + ".jpg" }
 }
 

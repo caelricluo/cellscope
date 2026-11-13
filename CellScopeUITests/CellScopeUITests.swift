@@ -4,6 +4,26 @@ final class CellScopeUITests: XCTestCase {
     @MainActor private func visible(_ query: XCUIElementQuery) -> XCUIElement {
         query.allElementsBoundByIndex.first(where: { $0.isHittable }) ?? query.firstMatch
     }
+    @MainActor func testAutomaticBorderRequiresFreshAreaConfirmation() {
+        let app = XCUIApplication(); app.launch()
+        app.buttons["loadDemo"].tap()
+        let count = app.staticTexts["cellCount"]
+        let ready = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@", "49"),object:count)
+        XCTAssertEqual(XCTWaiter.wait(for:[ready],timeout:20),.completed)
+        app.buttons["locateGrid"].tap()
+        app.buttons["重新定位边框"].tap()
+        let status = app.staticTexts.matching(identifier:"gridDetectionStatus").firstMatch
+        let aligned = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label CONTAINS %@", "4×4"),object:status)
+        XCTAssertEqual(XCTWaiter.wait(for:[aligned],timeout:20),.completed)
+        let recounted = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@", "49"),object:count)
+        XCTAssertEqual(XCTWaiter.wait(for:[recounted],timeout:20),.completed)
+        let confirm = app.switches["confirmArea"]
+        for _ in 0..<6 where !confirm.isHittable { app.swipeUp() }
+        XCTAssertEqual(confirm.value as? String,"0")
+        XCTAssertFalse(app.staticTexts["concentration"].exists)
+        confirm.tap()
+        XCTAssertTrue(app.staticTexts["fourFieldMean"].exists)
+    }
     @MainActor func testDemoCountingCorrectionCalculationAndHistory() {
         let app = XCUIApplication()
         app.launch()

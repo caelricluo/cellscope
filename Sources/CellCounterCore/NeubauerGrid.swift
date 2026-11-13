@@ -74,7 +74,11 @@ public struct NeubauerGrid: Codable, Equatable, Sendable {
     }
     /// Touch rule: include objects touching top/left, exclude any touching
     /// bottom/right. Test object extent rather than only its center.
-    public func assignedIndex(for marker: CellMarker, in region: CountRegion) -> Int? {
+    public func assignedIndex(for marker: CellMarker, in region: CountRegion, alignment: GridQuad? = nil) -> Int? {
+        if let alignment {
+            guard let transformed = alignment.markerInUnitSquare(marker) else { return nil }
+            return assignedIndex(for: transformed, in: CountRegion(x: 0, y: 0, width: 1, height: 1))
+        }
         guard isValid else { return nil }
         guard let extent = marker.extent else {
             guard let index = index(x: marker.x, y: marker.y, in: region), selectedIndices.contains(index) else { return nil }
@@ -95,10 +99,10 @@ public struct NeubauerGrid: Codable, Equatable, Sendable {
         if mode == .overview { return "\(["A", "B", "C"][index / 3])\(index % 3 + 1)" }
         return String(index + 1)
     }
-    public func counts(_ markers: [CellMarker], in region: CountRegion) -> [Int: Int] {
+    public func counts(_ markers: [CellMarker], in region: CountRegion, alignment: GridQuad? = nil) -> [Int: Int] {
         var counts: [Int: Int] = [:]
         for marker in markers {
-            if let index = assignedIndex(for: marker, in: region) {
+            if let index = assignedIndex(for: marker, in: region, alignment: alignment) {
                 counts[index, default: 0] += 1
             }
         }

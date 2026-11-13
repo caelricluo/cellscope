@@ -1,6 +1,7 @@
 import AVFoundation
 import PhotosUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @EnvironmentObject var model: CounterModel
@@ -23,9 +24,11 @@ struct CountWorkspace: View {
     @EnvironmentObject var model: CounterModel
     @State private var selection: PhotosPickerItem?
     @State private var showCamera = false
+    @State private var showFileImport = false
     @State private var showFullscreen = false
     @State private var showDetectionSettings = false
     @State private var confirmRedetect = false
+    @State private var confirmRelocate = false
     @State private var confirmReplace = false
     @State private var pendingAction: (() -> Void)?
     @FocusState private var inputFocused: Bool
@@ -50,9 +53,21 @@ struct CountWorkspace: View {
             .background(Palette.paper).clipped().navigationBarHidden(true)
             .scrollDismissesKeyboard(.interactively)
             .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("完成") { inputFocused = false } } }
+            .fileImporter(isPresented: $showFileImport, allowedContentTypes: [.image]) { result in
+                do {
+                    let url = try result.get()
+                    let access = url.startAccessingSecurityScopedResource()
+                    defer { if access { url.stopAccessingSecurityScopedResource() } }
+                    guard let image = UIImage(data: try Data(contentsOf: url)) else { throw CocoaError(.fileReadCorruptFile) }
+                    model.setImage(image)
+                } catch { model.message = "文件导入失败：\(error.localizedDescription)" }
+            }
             .fullScreenCover(isPresented: $showCamera) { CameraPicker { model.setImage($0) }.ignoresSafeArea() }
             .fullScreenCover(isPresented: $showFullscreen) { fullscreenEditor }
             .sheet(isPresented: $showDetectionSettings) { detectionSettings }
+            .confirmationDialog("重新定位会清空当前标记和面积确认。", isPresented: $confirmRelocate, titleVisibility: .visible) {
+                Button("重新定位边框") { model.locateGrid() }
+            }
             .confirmationDialog("重新检测会替换当前标记，可通过撤销恢复。", isPresented: $confirmRedetect, titleVisibility: .visible) {
                 Button("重新检测") { model.detect() }
             }
@@ -120,6 +135,11 @@ struct CountWorkspace: View {
                         .foregroundStyle(Palette.green).background(Palette.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
                 }.accessibilityIdentifier("importPhoto")
             }
+            #if targetEnvironment(macCatalyst)
+            Button { replace { showFileImport = true } } label: {
+                Label("从本机文件导入", systemImage: "folder") .font(.caption)
+            }.accessibilityIdentifier("importFile")
+            #endif
             if model.image == nil {
                 Button {
                     if model.capturedFields > 0 {
@@ -150,9 +170,27 @@ struct CountWorkspace: View {
                         .foregroundStyle(.white).padding(11).background(.black.opacity(0.55), in: Circle())
                 }.padding(10).accessibilityLabel("全屏复核")
                 if model.isDetecting {
-                    ProgressView("正在检测候选细胞…").padding(16).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    ProgressView(model.isLocatingGrid ? "正在定位计数板边框…" : "正在检测候选细胞…").padding(16).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+            }
+            HStack {
+                Button {
+                    if model.hasAnalyzed { confirmRelocate = true } else { model.locateGrid() }
+                } label: { Label("自动定位边框", systemImage: "viewfinder") }
+                .accessibilityIdentifier("locateGrid")
+                Spacer()
+                Toggle("编号", isOn: $model.showMarkerLabels).fixedSize()
+            }.font(.caption).disabled(model.isDetecting)
+            if !model.gridStatus.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(model.gridStatus, systemImage: model.alignment == nil ? "viewfinder" : "checkmark.viewfinder")
+                        .font(.caption).foregroundStyle(model.alignment == nil ? Palette.muted : Palette.green)
+                    if model.gridDetection?.central != nil && model.grid.mode != .redBloodCells && model.alignment == nil {
+                        Button("使用中央红细胞计数区") { model.changeCountingMode(.redBloodCells) }
+                            .font(.caption.weight(.semibold)).disabled(model.isDetecting)
+                    }
+                }.fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("gridDetectionStatus")
             }
             editingToolbar
             if model.grid.mode.divisions > 1 { GridSquaresPanel(model: model) }
@@ -168,7 +206,7 @@ struct CountWorkspace: View {
             Button {
                 if model.hasAnalyzed { confirmRedetect = true } else { model.detect() }
             } label: { Label(model.hasAnalyzed ? "重新检测" : "自动检测细胞", systemImage: "scope") }
-                .buttonStyle(PrimaryButton()).disabled(model.isDetecting).opacity(model.isDetecting ? 0.5 : 1)
+                .buttonStyle(PrimaryButton()).disabled(model.isDetecting || model.needsManualGrid).opacity(model.isDetecting || model.needsManualGrid ? 0.5 : 1)
                 .accessibilityIdentifier("detectCells")
             Toggle(isOn: $model.reviewed) {
                 Text("已逐一复核细胞标记").font(.subheadline)
@@ -329,14 +367,19 @@ struct CountWorkspace: View {
                     Slider(value: $model.settings.sensitivity, in: 0...1)
                     Toggle("亮细胞 / 暗背景", isOn: $model.settings.brightCells)
                 }
-                Section("直径占图像短边的比例") {
-                    Text("最小：\(model.settings.minimumDiameter.formatted(.percent.precision(.fractionLength(1))))")
-                    Slider(value: $model.settings.minimumDiameter, in: 0.004...0.08, step: 0.001)
-                    Text("最大：\(model.settings.maximumDiameter.formatted(.percent.precision(.fractionLength(1))))")
-                    Slider(value: $model.settings.maximumDiameter, in: 0.01...0.16, step: 0.001)
-                    if model.settings.minimumDiameter > model.settings.maximumDiameter {
-                        Text("最小直径不能大于最大直径").foregroundStyle(.red)
+                Section("细胞尺寸") {
+                    Toggle("自动估计细胞直径", isOn: $model.settings.automaticSize)
+                    if model.estimatedDiameterPixels > 0 { Text("当前图像估计直径：约 \(Int(model.estimatedDiameterPixels)) 像素").font(.caption) }
+                    if !model.settings.automaticSize {
+                        Text("最小：\(model.settings.minimumDiameter.formatted(.percent.precision(.fractionLength(1))))")
+                        Slider(value: $model.settings.minimumDiameter, in: 0.002...0.08, step: 0.001)
+                        Text("最大：\(model.settings.maximumDiameter.formatted(.percent.precision(.fractionLength(1))))")
+                        Slider(value: $model.settings.maximumDiameter, in: 0.01...0.16, step: 0.001)
+                        if model.settings.minimumDiameter > model.settings.maximumDiameter {
+                            Text("最小直径不能大于最大直径").foregroundStyle(.red)
+                        }
                     }
+                    Text("手动范围针对单细胞；相连团块允许放宽至最大直径的 3 倍。").font(.caption)
                 }
                 Section {
                     Text("调大灵敏度可找回低对比度细胞，也可能引入杂质。网格、离焦和粘连会影响检测；不会自动判定细胞类型或活死。")

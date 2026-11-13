@@ -64,7 +64,7 @@ enum ImageService {
             let n = mode.divisions, side = 800.0 / Double(n)
             for row in 0..<n { for col in 0..<n {
                 let origin = CGPoint(x: 100 + Double(col) * side, y: 100 + Double(row) * side)
-                let sub = mode == .redBloodCells || (row != 1 || col != 1) ? 4 : 5
+                let sub = mode == .redBloodCells || (row != 1 || col != 1) ? 4 : 20
                 c.setStrokeColor(UIColor(white: 0.81, alpha: 1).cgColor); c.setLineWidth(1)
                 for k in 1..<sub {
                     let offset = Double(k) * side / Double(sub)
@@ -90,20 +90,20 @@ enum ImageService {
         }
     }
 
-    static func annotated(_ image: UIImage, markers: [CellMarker], region: CountRegion, grid: NeubauerGrid = NeubauerGrid(mode: .custom)) -> UIImage {
+    static func annotated(_ image: UIImage, markers: [CellMarker], region: CountRegion, grid: NeubauerGrid = NeubauerGrid(mode: .custom), alignment: GridQuad? = nil) -> UIImage {
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
         return UIGraphicsImageRenderer(size: image.size, format: format).image { renderer in
             image.draw(at: .zero)
             let c = renderer.cgContext
-            GridDrawing.draw(in: c, size: image.size, region: region, grid: grid)
-            c.setLineWidth(3)
+            GridDrawing.draw(in: c, size: image.size, region: region, grid: grid, alignment: alignment)
+            c.setLineWidth(1.5)
             for (index, marker) in markers.enumerated() {
                 let p = CGPoint(x: marker.x * image.size.width, y: marker.y * image.size.height)
                 let r = marker.radius * min(image.size.width, image.size.height)
                 c.setStrokeColor((marker.isManual ? UIColor.systemOrange : UIColor.systemTeal).cgColor)
                 c.strokeEllipse(in: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
                 ("\(index + 1)" as NSString).draw(at: CGPoint(x: p.x + r, y: p.y - r), withAttributes: [
-                    .font: UIFont.monospacedDigitSystemFont(ofSize: 15, weight: .bold), .foregroundColor: UIColor.systemTeal
+                    .font: UIFont.monospacedDigitSystemFont(ofSize: 11, weight: .bold), .foregroundColor: UIColor.systemTeal
                 ])
             }
         }

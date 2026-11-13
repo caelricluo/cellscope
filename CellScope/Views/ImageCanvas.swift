@@ -11,7 +11,7 @@ struct ImageCanvas: UIViewRepresentable {
     }
     func updateUIView(_ view: MicroscopeScrollView, context: Context) {
         view.configure(image: model.image, markers: model.markers, region: model.region,
-                       mode: model.mode, busy: model.isDetecting, grid: model.grid)
+                       mode: model.mode, busy: model.isDetecting, grid: model.grid, alignment: model.alignment, showLabels: model.showMarkerLabels)
     }
 }
 
@@ -23,6 +23,7 @@ final class MicroscopeScrollView: UIScrollView, UIScrollViewDelegate, UIGestureR
     private var mode: EditMode = .inspect
     private var startPoint: CGPoint?
     private var previousRegion = CountRegion()
+    private var previousAlignment: GridQuad?
     private var lastSize = CGSize.zero
     private var needsFit = true
     private var busy = false
@@ -41,7 +42,7 @@ final class MicroscopeScrollView: UIScrollView, UIScrollViewDelegate, UIGestureR
         accessibilityIdentifier = "imageCanvas"
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    func configure(image: UIImage?, markers: [CellMarker], region: CountRegion, mode: EditMode, busy: Bool, grid: NeubauerGrid) {
+    func configure(image: UIImage?, markers: [CellMarker], region: CountRegion, mode: EditMode, busy: Bool, grid: NeubauerGrid, alignment: GridQuad?, showLabels: Bool) {
         if currentImage !== image {
             currentImage = image; photo.image = image; needsFit = true
             zoomScale = 1
@@ -49,7 +50,7 @@ final class MicroscopeScrollView: UIScrollView, UIScrollViewDelegate, UIGestureR
             contentSize = photo.bounds.size
         }
         self.mode = mode; self.busy = busy
-        photo.markers = markers; photo.region = region; photo.grid = grid; photo.setNeedsDisplay()
+        photo.markers = markers; photo.region = region; photo.grid = grid; photo.alignment = alignment; photo.showLabels = showLabels; photo.setNeedsDisplay()
         selectPan.isEnabled = mode == .region && !busy
         panGestureRecognizer.minimumNumberOfTouches = mode == .add || mode == .remove ? 2 : 1
         panGestureRecognizer.isEnabled = mode != .region
@@ -80,18 +81,18 @@ final class MicroscopeScrollView: UIScrollView, UIScrollViewDelegate, UIGestureR
         let location = gesture.location(in: photo)
         let p = CGPoint(x: min(1, max(0, location.x / photo.bounds.width)),
                         y: min(1, max(0, location.y / photo.bounds.height)))
-        if gesture.state == .began { startPoint = p; previousRegion = photo.region }
+        if gesture.state == .began { startPoint = p; previousRegion = photo.region; previousAlignment = photo.alignment; photo.alignment = nil }
         guard let startPoint else { return }
         let region = CountRegion(x: min(startPoint.x, p.x), y: min(startPoint.y, p.y),
                                  width: abs(startPoint.x - p.x), height: abs(startPoint.y - p.y))
         if gesture.state == .changed { photo.region = region; photo.setNeedsDisplay() }
         if gesture.state == .ended {
             if region.width >= 0.04 && region.height >= 0.04 { onRegion?(region) }
-            else { photo.region = previousRegion; photo.setNeedsDisplay() }
+            else { photo.region = previousRegion; photo.alignment = previousAlignment; photo.setNeedsDisplay() }
             self.startPoint = nil
         }
         if gesture.state == .cancelled || gesture.state == .failed {
-            photo.region = previousRegion; photo.setNeedsDisplay(); self.startPoint = nil
+            photo.region = previousRegion; photo.alignment = previousAlignment; photo.setNeedsDisplay(); self.startPoint = nil
         }
     }
 }
@@ -101,20 +102,22 @@ final class AnnotationSurface: UIView {
     var markers: [CellMarker] = []
     var region = CountRegion()
     var grid = NeubauerGrid()
+    var alignment: GridQuad?
+    var showLabels = false
     override func draw(_ rect: CGRect) {
         guard let image, let c = UIGraphicsGetCurrentContext() else { return }
         image.draw(in: bounds)
-        GridDrawing.draw(in: c, size: bounds.size, region: region, grid: grid)
+        GridDrawing.draw(in: c, size: bounds.size, region: region, grid: grid, alignment: alignment)
         let short = min(bounds.width, bounds.height)
         for (index, marker) in markers.enumerated() {
             let p = CGPoint(x: marker.x * bounds.width, y: marker.y * bounds.height)
             let radius = marker.radius * short
             let color = marker.isManual ? UIColor.systemOrange : UIColor(red: 0.05, green: 0.65, blue: 0.47, alpha: 1)
-            c.setStrokeColor(color.cgColor); c.setLineWidth(short * 0.0025)
+            c.setStrokeColor(color.cgColor); c.setLineWidth(short * 0.0012)
             c.strokeEllipse(in: CGRect(x: p.x - radius, y: p.y - radius, width: radius * 2, height: radius * 2))
-            ("\(index + 1)" as NSString).draw(at: CGPoint(x: p.x + radius, y: p.y - radius), withAttributes: [
-                .font: UIFont.monospacedDigitSystemFont(ofSize: short * 0.015, weight: .bold), .foregroundColor: color
-            ])
+            if showLabels { ("\(index + 1)" as NSString).draw(at: CGPoint(x: p.x + radius, y: p.y - radius), withAttributes: [
+                .font: UIFont.monospacedDigitSystemFont(ofSize: short * 0.008, weight: .bold), .foregroundColor: color
+            ]) }
         }
     }
 }
