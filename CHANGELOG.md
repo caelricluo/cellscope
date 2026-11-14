@@ -1,5 +1,17 @@
 # Changelog / 更新日志
 
+## 0.6.0
+
+- Replaced the fixed sensitivity floor with locally noise-adaptive support and seed thresholds; recovered compact faint targets in the highest sensitivity range.
+- Added automatic, dark and bright cell appearance controls with live results. Automatic mode groups both polarities once, retaining connected clusters as one object.
+- Improved sparse 4×4 grid selection beside dense ruling bands, validated all five lines per axis and expanded tilted-boundary refinement.
+- Preserved legacy manual polarity settings and the independent 4×/10×/RBC mode choice.
+
+- 将固定灵敏度下限替换为局部噪声自适应支撑与种子阈值，高灵敏度区间恢复较小浅弱目标。
+- 增加自动、深色、浅色目标选择，结果实时更新；自动模式合并亮暗轮廓后统一分组，团块计作一个。
+- 改善密集刻线邻近区域的 4×4 网格选择，校验每个方向全部五条线，并扩展倾斜边界拟合。
+- 保留旧样本的手动明暗设置，以及独立的 4×、10×、红细胞模式选择。
+
 ## 0.5.0
 
 - Made central-grid detection advisory: 4×, 10× and custom mode remain available with the selected frame; the RBC shortcut is optional.

@@ -253,3 +253,11 @@
 "恢复计数板与识别参数" = "Reset chamber and detection parameters";
 "parameter_reset_guide" = "Reset chamber parameters restores the selected counting area, 0.1 mm depth, dilution factor 2 and 1 mL stock volume. Images, frames, target count and mode are retained. Reset in Detection settings restores that mode’s default detection parameters.";
 "模式" = "Mode";
+
+"目标明暗" = "Cell appearance";
+
+"自动" = "Auto";
+
+"深色" = "Dark";
+
+"浅色" = "Bright";

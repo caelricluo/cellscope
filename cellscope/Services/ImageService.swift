@@ -27,6 +27,20 @@ enum ImageService {
         return success ? GrayImage(width: w, height: h, pixels: pixels) : nil
     }
 
+    #if DEBUG
+    static func faintCellTestImage() -> UIImage {
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        return UIGraphicsImageRenderer(size:CGSize(width:400,height:400),format:format).image { renderer in
+            let c = renderer.cgContext
+            c.setFillColor(gray:0.7,alpha:1);c.fill(CGRect(x:0,y:0,width:400,height:400))
+            for (x,y,bright) in [(80,85,true),(180,100,false),(300,90,true),(110,260,false),(300,280,true)] {
+                c.setFillColor(gray:bright ? 0.725 : 0.675,alpha:1)
+                c.fillEllipse(in:CGRect(x:x-4,y:y-4,width:8,height:8))
+            }
+        }
+    }
+    #endif
+
     /// Deterministic synthetic fixture, visibly labeled in every result.
     static func demo(mode: CountingMode = .singleLarge) -> UIImage {
         if mode == .overview || mode == .redBloodCells { return gridDemo(mode: mode) }

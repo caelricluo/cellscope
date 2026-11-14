@@ -27,6 +27,7 @@ public enum GridDetector {
         let w = image.width, h = image.height
         guard w >= 80, h >= 80, w <= 2048, h <= 2048, image.pixels.count == w*h else { return result }
         let g = ImageMath.gaussian(image.pixels.map(Float.init), width: w, height: h, sigma: 0.7)
+        var cornerScore = -Double.infinity
         for polarity in [Float(1), Float(-1)] {
             var vx = [Float](repeating: 0, count: w*h), hy = vx
             var xp = [Double](repeating: 0, count: w), yp = [Double](repeating: 0, count: h)
@@ -42,7 +43,7 @@ public enum GridDetector {
             for x in 0..<w { xp[x] = xn[x] > h*2/5 ? xp[x]/Double(xn[x]) : 0 }
             for y in 0..<h { yp[y] = yn[y] > w*2/5 ? yp[y]/Double(yn[y]) : 0 }
             xp = smooth(xp); yp = smooth(yp)
-            if let a = fit(xp, intervals: 20), let b = fit(yp, intervals: 20), compatible(a,b),
+            if let a = fits(xp, intervals: 20).first, let b = fits(yp, intervals: 20).first, compatible(a,b),
                let quad = refine(a,b,vx:vx,hy:hy,w:w,h:h), quad.isValid {
                 let strength = min(a.support,b.support)
                 if result.central == nil || strength > result.lineSupport {
@@ -53,10 +54,18 @@ public enum GridDetector {
                     result.overview = outer.isValid && visible(outer,g:g,w:w,h:h) && edgesSupported(outer,vx:vx,hy:hy,w:w,h:h) ? outer : nil
                 }
             }
-            if result.central == nil, let a = fit(xp, intervals: 4), let b = fit(yp, intervals: 4),
-               compatible(a,b), let quad = refine(a,b,vx:vx,hy:hy,w:w,h:h), quad.isValid,
-               visible(quad,g:g,w:w,h:h), edgesSupported(quad,vx:vx,hy:hy,w:w,h:h) {
-                result.corner = quad; result.lineSupport = min(a.support,b.support)
+            if result.central == nil {
+                // Retain alternatives: the strongest endpoint can belong to an adjacent
+                // dense grid. Both axes and all five observed rulings must agree.
+                let xs = fits(xp, intervals:4).prefix(8), ys = fits(yp, intervals:4).prefix(8)
+                for a in xs { for b in ys {
+                    guard compatible(a,b), a.score+b.score > cornerScore,
+                          let quad = refine(a,b,vx:vx,hy:hy,w:w,h:h,sparse:true), quad.isValid,
+                          visible(quad,g:g,w:w,h:h), edgesSupported(quad,vx:vx,hy:hy,w:w,h:h),
+                          subdivisionsSupported(a,b,vx:vx,hy:hy,w:w,h:h) else { continue }
+                    result.corner = quad; result.lineSupport = min(a.support,b.support)
+                    cornerScore = a.score+b.score
+                } }
             }
         }
         if result.central != nil { result.corner = nil }
@@ -67,56 +76,78 @@ public enum GridDetector {
         for i in 2..<(p.count-2) { out[i] = (p[i-2]+4*p[i-1]+6*p[i]+4*p[i+1]+p[i+2])/16 }
         return out
     }
-    private static func fit(_ p: [Double], intervals: Int) -> Lattice? {
+    private static func fits(_ p: [Double], intervals: Int) -> [Lattice] {
         let noise = ImageMath.median(p.filter { $0 > 0 })
         var peaks: [Int] = []
         for i in 8..<(p.count-8) where p[i] >= p[i-1] && p[i] > p[i+1] {
             let left = p[(i-8)..<i].min() ?? p[i], right = p[(i+1)...(i+8)].min() ?? p[i]
-            if p[i] - max(left,right) > 0.65 && p[i] > max(1.2,noise+0.5) {
+            if p[i] - max(left,right) > (intervals == 20 ? 0.65 : 0.3) && p[i] > max(1.2,noise+0.5) {
                 if let last = peaks.last, i-last < 8 { if p[i] > p[last] { peaks[peaks.count-1] = i } }
                 else { peaks.append(i) }
             }
         }
-        guard peaks.count >= intervals+1 else { return nil }
-        var best: Lattice?
+        guard peaks.count >= intervals+1 else { return [] }
+        var candidates: [Lattice] = []
         let minSpan = Double(p.count)*(intervals == 20 ? 0.18 : 0.42)
         for a in peaks { for b in peaks where b > a && Double(b-a) >= minSpan && Double(b-a) <= Double(p.count)*0.94 {
             let step = Double(b-a)/Double(intervals)
             guard step >= (intervals == 20 ? 8 : 15) else { continue }
             var values: [Double] = []
             for k in 0...intervals {
-                let index = Int((Double(a)+Double(k)*step).rounded()), r = min(4,max(2,Int(step*0.12)))
+                let index = Int((Double(a)+Double(k)*step).rounded()), r = intervals == 20 ? min(4,max(2,Int(step*0.12))) : max(4,Int(step*0.11))
                 values.append(p[max(0,index-r)...min(p.count-1,index+r)].max() ?? 0)
             }
             let hits = values.filter { $0 > max(1.8,noise+0.8) }.count
             guard hits >= (intervals == 20 ? 19 : 5), ImageMath.median(values) > noise+1,
                   p[a] > noise+1, p[b] > noise+1 else { continue }
             let mean = values.map { min($0,10) }.reduce(0,+)/Double(values.count)
-            let score = mean + ImageMath.median(values) + Double(hits)*0.3 + 0.6*(p[a]+p[b])
-            if best == nil || score > best!.score {
-                best = Lattice(start:Double(a),end:Double(b),score:score,support:Double(hits)/Double(intervals+1))
+            var score = mean + ImageMath.median(values) + Double(hits)*0.3 + 0.6*(p[a]+p[b])
+            if intervals == 4 {
+                // A 4×4 large square contains five rulings, not a cropped portion
+                // of the adjacent 20-interval central grid. Ignore nearby halo peaks.
+                let tolerance = max(10,step*0.12)
+                let extras = peaks.filter { q in
+                    q > a && q < b && (0...4).allSatisfy { abs(Double(q-a)-Double($0)*step) > tolerance }
+                }
+                let penalty = extras.map { min(10,max(0,p[$0]-noise)) }.reduce(0,+)
+                score = mean + min(10,ImageMath.median(values)) + Double(hits)*0.3 +
+                    0.6*(min(10,p[a])+min(10,p[b])) - penalty
             }
+            candidates.append(Lattice(start:Double(a),end:Double(b),score:score,support:Double(hits)/Double(intervals+1)))
         } }
-        return best
+        return candidates.sorted { $0.score > $1.score }
+    }
+    private static func subdivisionsSupported(_ x:Lattice,_ y:Lattice,vx:[Float],hy:[Float],w:Int,h:Int)->Bool {
+        for k in 1..<4 {
+            guard side(vx,position:x.start+(x.end-x.start)*Double(k)/4,low:y.start,high:y.end,
+                       vertical:true,w:w,h:h,search:max(10,Int((x.end-x.start)*0.035))) != nil,
+                  side(hy,position:y.start+(y.end-y.start)*Double(k)/4,low:x.start,high:x.end,
+                       vertical:false,w:w,h:h,search:max(10,Int((y.end-y.start)*0.035))) != nil else { return false }
+        }
+        return true
     }
     private static func compatible(_ x: Lattice, _ y: Lattice) -> Bool {
         let ratio = (x.end-x.start)/(y.end-y.start)
         return ratio > 0.72 && ratio < 1.38
     }
     private static func side(_ response: [Float], position: Double, low: Double, high: Double,
-                             vertical: Bool, w: Int, h: Int) -> (Double,Double)? {
+                             vertical: Bool, w: Int, h: Int, search: Int = 10) -> (Double,Double)? {
         var points: [(Double,Double)] = []
         let size = vertical ? w : h, length = vertical ? h : w
         for bin in 0..<16 {
             let from = max(1,Int(low+(high-low)*Double(bin)/16)), to = min(length-2,Int(low+(high-low)*Double(bin+1)/16))
-            let lo = max(1,Int(position)-10), hi = min(size-2,Int(position)+10)
+            let lo = max(1,Int(position)-search), hi = min(size-2,Int(position)+search)
             guard to > from, hi > lo else { continue }
             var profile = [Double](repeating:0,count:hi-lo+1)
             for q in lo...hi {
                 for t in from...to { profile[q-lo] += Double(response[vertical ? t*w+q : q*w+t]) }
                 profile[q-lo] /= Double(to-from+1)
             }
-            guard let strongest = profile.indices.max(by:{profile[$0]<profile[$1]}), profile[strongest] > 1.5 else { continue }
+            func strength(_ i:Int)->Double {
+                let distance = abs(Double(i+lo)-position)/Double(search)
+                return profile[i]/(1+(search > 10 ? 4 : 0)*distance*distance)
+            }
+            guard let strongest = profile.indices.max(by:{strength($0)<strength($1)}), profile[strongest] > 1.5 else { continue }
             var peak = strongest
             let ridges = (1..<(profile.count-1)).filter {
                 profile[$0] > profile[$0-1] && profile[$0] >= profile[$0+1] && profile[$0] > profile[strongest]*0.4
@@ -149,11 +180,11 @@ public enum GridDetector {
         line = regression(points)
         return abs(line.1) < 0.08 ? line : nil
     }
-    private static func refine(_ x: Lattice, _ y: Lattice, vx:[Float],hy:[Float],w:Int,h:Int) -> GridQuad? {
-        guard let l = side(vx,position:x.start,low:y.start,high:y.end,vertical:true,w:w,h:h),
-              let r = side(vx,position:x.end,low:y.start,high:y.end,vertical:true,w:w,h:h),
-              let t = side(hy,position:y.start,low:x.start,high:x.end,vertical:false,w:w,h:h),
-              let b = side(hy,position:y.end,low:x.start,high:x.end,vertical:false,w:w,h:h) else { return nil }
+    private static func refine(_ x: Lattice, _ y: Lattice, vx:[Float],hy:[Float],w:Int,h:Int, sparse:Bool = false) -> GridQuad? {
+        guard let l = side(vx,position:x.start,low:y.start,high:y.end,vertical:true,w:w,h:h,search:sparse ? max(10,Int((x.end-x.start)*0.04)) : 10),
+              let r = side(vx,position:x.end,low:y.start,high:y.end,vertical:true,w:w,h:h,search:sparse ? max(10,Int((x.end-x.start)*0.04)) : 10),
+              let t = side(hy,position:y.start,low:x.start,high:x.end,vertical:false,w:w,h:h,search:sparse ? max(10,Int((y.end-y.start)*0.04)) : 10),
+              let b = side(hy,position:y.end,low:x.start,high:x.end,vertical:false,w:w,h:h,search:sparse ? max(10,Int((y.end-y.start)*0.04)) : 10) else { return nil }
         func intersection(_ v:(Double,Double),_ hline:(Double,Double))->GridPoint {
             let xx = (v.0+v.1*hline.0)/(1-v.1*hline.1), yy = hline.0+hline.1*xx
             return GridPoint(x:xx/Double(w),y:yy/Double(h))

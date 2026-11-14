@@ -32,20 +32,28 @@ public struct CellMarker: Codable, Identifiable, Equatable, Sendable {
     }
 }
 
+public enum DetectionPolarity: String, CaseIterable, Sendable { case automatic, dark, bright }
+
 public struct DetectionSettings: Codable, Equatable, Sendable {
     public var sensitivity: Double = 0.55
     public var minimumDiameter: Double = 0.012
     public var maximumDiameter: Double = 0.065
     public var brightCells: Bool = false
+    public var automaticPolarity: Bool = true
+    public var polarity: DetectionPolarity {
+        get { automaticPolarity ? .automatic : (brightCells ? .bright : .dark) }
+        set { automaticPolarity = newValue == .automatic; brightCells = newValue == .bright }
+    }
     public var automaticSize: Bool = true
     public init() {}
-    private enum CodingKeys: String, CodingKey { case sensitivity, minimumDiameter, maximumDiameter, brightCells, automaticSize }
+    private enum CodingKeys: String, CodingKey { case sensitivity, minimumDiameter, maximumDiameter, brightCells, automaticSize, automaticPolarity }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         sensitivity = try c.decodeIfPresent(Double.self, forKey: .sensitivity) ?? 0.55
         minimumDiameter = try c.decodeIfPresent(Double.self, forKey: .minimumDiameter) ?? 0.012
         maximumDiameter = try c.decodeIfPresent(Double.self, forKey: .maximumDiameter) ?? 0.065
         brightCells = try c.decodeIfPresent(Bool.self, forKey: .brightCells) ?? false
+        automaticPolarity = try c.decodeIfPresent(Bool.self, forKey: .automaticPolarity) ?? false
         automaticSize = try c.decodeIfPresent(Bool.self, forKey: .automaticSize) ?? false
     }
 }

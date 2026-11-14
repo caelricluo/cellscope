@@ -397,7 +397,11 @@ struct CountWorkspace: View {
                     Section(tr("局部对比度")) {
                         HStack { Text(tr("检测灵敏度")); Spacer(); Text(model.settings.sensitivity.formatted(.percent.precision(.fractionLength(0)))) }
                         Slider(value: $model.settings.sensitivity, in: 0...1).accessibilityIdentifier("sensitivitySlider")
-                        Toggle(tr("亮细胞 / 暗背景"), isOn: $model.settings.brightCells).accessibilityIdentifier("brightCellsToggle")
+                        Picker(tr("目标明暗"), selection: $model.settings.polarity) {
+                            Text(tr("自动")).tag(DetectionPolarity.automatic)
+                            Text(tr("深色")).tag(DetectionPolarity.dark)
+                            Text(tr("浅色")).tag(DetectionPolarity.bright)
+                        }.pickerStyle(.segmented).accessibilityIdentifier("cellPolarityPicker")
                     }
                     Section(tr("细胞尺寸")) {
                         Toggle(tr("自动估计细胞直径"), isOn: $model.settings.automaticSize).accessibilityIdentifier("automaticSizeToggle")

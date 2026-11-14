@@ -24,3 +24,5 @@ dist/
 .local/
 build-sim/
 build-mode-release/
+
+build-low-contrast/

@@ -28,6 +28,15 @@ The detector runs outside the main actor. Parameter and region changes are debou
 
 Localization is maintained in standard `.strings` resources. `tr` resolves static strings and `trf` formats translated templates. Chinese and English resources share identical keys and format placeholders. The bundle identifier remains stable for application updates; the legacy sample directory is migrated when necessary.
 
+For image-level diagnostics on macOS:
+
+```sh
+swiftc -O Sources/cellscopeCore/*.swift scripts/analyze_image.swift -o /tmp/cellscope-analyze
+/tmp/cellscope-analyze image.jpg result.json singleLarge 1 automatic
+```
+
+The optional arguments select counting mode, sensitivity (`0...1`) and polarity (`automatic`, `dark`, `bright`). JSON includes grid geometry, detection settings, markers and rejection totals. Counts are populated when an automatic reference is available for the requested mode.
+
 ## 简体中文
 
 应用面向 iOS 17 及以上，使用 SwiftUI、UIKit 和 Foundation。图像处理核心无第三方依赖，目录结构和验证命令见上文。
@@ -35,5 +44,7 @@ Localization is maintained in standard `.strings` resources. `tr` resolves stati
 根据本机设备列表选择可用的模拟器名称。`python3 scripts/create_project.py` 重新生成 iOS 工程；`--preview` 生成独立 Catalyst 工程。重新生成会替换工程编译配置。
 
 识别任务在主线程之外运行。参数和区域变化合并为 180 ms 的请求，取消旧任务，并通过版本检查阻止旧结果覆盖当前图像或角位。灰度数据按当前图像缓存。
+
+macOS 图像诊断命令见上文，可指定计数模式、灵敏度和目标明暗。输出 JSON 包含网格几何、识别参数、标记和筛除数量；找到对应模式的自动边框时输出计数。
 
 本地化使用标准 `.strings` 资源：`tr` 解析普通文本，`trf` 格式化带参数文本。中英文使用相同键和占位符。Bundle Identifier 保持稳定以支持更新，历史样本目录按需迁移。

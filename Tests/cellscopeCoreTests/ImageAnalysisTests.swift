@@ -75,7 +75,8 @@ final class ImageAnalysisTests: XCTestCase {
         for (x,y,_) in centers.prefix(3) {
             XCTAssertTrue(report.markers.contains { hypot($0.x*Double(w)-Double(x),$0.y*Double(w)-Double(y))<2 })
         }
-        XCTAssertLessThan(report.estimatedDiameterPixels,15)
+        // Automatic polarity measures the combined bright/dark halo support.
+        XCTAssertLessThanOrEqual(report.estimatedDiameterPixels,16)
         XCTAssertTrue(report.markers.allSatisfy{$0.radius*Double(w)<12})
     }
     func testProjectiveMappingAndExtentBoundaryRules() throws {
@@ -129,6 +130,82 @@ final class ImageAnalysisTests: XCTestCase {
         XCTAssertEqual(CellDetector.detect(fixture,region:whole,settings:s).count,3)
         s.automaticSize = false
         XCTAssertTrue(CellDetector.detect(fixture,region:whole,settings:s).isEmpty)
+    }
+
+    func testFaintMixedPolarityCellsRespondAtMaximumSensitivity() {
+        let w = 420, h = 400
+        var p = [UInt8](repeating:180,count:w*h)
+        for y in 0..<h { for x in 0..<w {
+            // Smooth illumination and deterministic sensor noise, independent of targets.
+            p[y*w+x] = UInt8(165+x/35+y/50+((x*17+y*13)%3)-1)
+        } }
+        let centers = [(83,90,1.0,18.0),(185,110,-1.0,18.0),(305,95,1.0,18.0),(115,260,-1.0,18.0),(305,280,1.0,6.5)]
+        for (cx,cy,sign,spread) in centers { for y in (cy-10)...(cy+10) { for x in (cx-10)...(cx+10) {
+            let r2 = Double((x-cx)*(x-cx)+(y-cy)*(y-cy))
+            p[y*w+x] = UInt8(clamping:Int(Double(p[y*w+x])+sign*11*exp(-r2/spread)))
+        } } }
+        let image = GrayImage(width:w,height:h,pixels:p)
+        var settings = DetectionSettings();settings.sensitivity = 1
+        let result = CellDetector.detect(image,region:whole,settings:settings)
+        XCTAssertEqual(result.count,centers.count)
+        for (x,y,_,_) in centers {
+            XCTAssertTrue(result.contains{hypot($0.x*Double(w)-Double(x),$0.y*Double(h)-Double(y))<3})
+        }
+        settings.sensitivity = 0
+        XCTAssertTrue(CellDetector.detect(image,region:whole,settings:settings).isEmpty)
+        settings.sensitivity = 1;settings.polarity = .bright
+        XCTAssertEqual(CellDetector.detect(image,region:whole,settings:settings).count,3)
+        settings.polarity = .dark
+        XCTAssertEqual(CellDetector.detect(image,region:whole,settings:settings).count,2)
+    }
+    func testMaximumSensitivityDoesNotTurnFlatNoiseOrRulingsIntoCells() {
+        let w = 400
+        var p = [UInt8](repeating:180,count:w*w)
+        for y in 0..<w { for x in 0..<w { p[y*w+x] = UInt8(170+x/40+((x*17+y*13)%3)-1) } }
+        for q in stride(from:40,through:360,by:80) { for a in 10..<390 {
+            p[q*w+a] = 205; p[a*w+q] = 135
+        } }
+        var settings = DetectionSettings();settings.sensitivity = 1
+        XCTAssertTrue(CellDetector.detect(GrayImage(width:w,height:w,pixels:p),region:whole,settings:settings).isEmpty)
+    }
+    func testPolaritySettingsRoundTripAndLegacyChoice() throws {
+        var settings = DetectionSettings()
+        XCTAssertEqual(settings.polarity,.automatic)
+        for polarity in DetectionPolarity.allCases {
+            settings.polarity = polarity
+            let decoded = try JSONDecoder().decode(DetectionSettings.self,from:JSONEncoder().encode(settings))
+            XCTAssertEqual(decoded,settings);XCTAssertEqual(decoded.polarity,polarity)
+        }
+        let old = Data("{\"brightCells\":true,\"automaticSize\":true}".utf8)
+        XCTAssertEqual(try JSONDecoder().decode(DetectionSettings.self,from:old).polarity,.bright)
+    }
+    func testTiltedCornerBesideDenseCentralBands() throws {
+        let w = 900, h = 960
+        var p = [UInt8](repeating:180,count:w*h)
+        let verticals = Array(stride(from:60,through:300,by:24))+Array(stride(from:420,through:780,by:120))
+        let horizontals = Array(stride(from:180,through:660,by:120))+Array(stride(from:684,through:900,by:24))
+        for y in 20..<920 { for x in 20..<880 {
+            let xx = Double(x)-0.018*Double(y-420), yy = Double(y)+0.01*Double(x-540)
+            let v = yy >= 160 && yy <= 920 && verticals.contains{abs(xx-Double($0))<1.2}
+            let horizontal = xx >= 40 && xx <= 850 && horizontals.contains{abs(yy-Double($0))<1.2}
+            p[y*w+x] = v || horizontal ? 115 : UInt8(175+x/100+y/160)
+        } }
+        let result = GridDetector.detect(GrayImage(width:w,height:h,pixels:p))
+        let q = try XCTUnwrap(result.corner)
+        XCTAssertNil(result.central)
+        for (point,expectedX,expectedY) in [(q.topLeft,300.0,180.0),(q.topRight,780.0,180.0),
+                                          (q.bottomLeft,300.0,660.0),(q.bottomRight,780.0,660.0)] {
+            let px = point.x*Double(w), py = point.y*Double(h)
+            XCTAssertEqual(px-0.018*(py-420),expectedX,accuracy:5)
+            XCTAssertEqual(py+0.01*(px-540),expectedY,accuracy:5)
+        }
+    }
+
+    func testDirectionalMedianMatchesOrderStatistic() {
+        for a in 0...4 { for b in 0...4 { for c in 0...4 { for d in 0...4 { for e in 0...4 {
+            let values = [a,b,c,d,e].map(Float.init)
+            XCTAssertEqual(ImageMath.median5(values[0],values[1],values[2],values[3],values[4]),values.sorted()[2])
+        } } } } }
     }
 
 }

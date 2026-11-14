@@ -33,12 +33,31 @@ public enum CellDetector {
         let fine = ImageMath.gaussian(pixels, width: w, height: h, sigma: 0.7)
         let background = ImageMath.gaussian(pixels, width: w, height: h, sigma: max(2.5, short / 400))
         guard !Task.isCancelled else { return report }
-        let threshold = Float(8 + (1 - min(1, max(0, settings.sensitivity))) * 10)
+        let signed = zip(fine,background).map(-)
+        let noise = ImageMath.localNoise(signed,width:w,height:h)
+        let sensitivity = Float(min(1,max(0,settings.sensitivity)))
+        let step = max(8,min(w,h)/85)
         var response = [Float](repeating: 0, count: pixels.count)
+        var threshold = response, seedThreshold = response
         var mask = [UInt8](repeating: 0, count: pixels.count)
-        for p in pixels.indices {
-            response[p] = settings.brightCells ? fine[p] - background[p] : background[p] - fine[p]
-            if response[p] > threshold && background[p] > 55 { mask[p] = 1 }
+        for y in 0..<h {
+            guard !Task.isCancelled else { return report }
+            for x in 0..<w {
+                let p = y*w+x, r = signed[p]
+                let v = ImageMath.median5(signed[max(0,y-2*step)*w+x],signed[max(0,y-step)*w+x],r,
+                    signed[min(h-1,y+step)*w+x],signed[min(h-1,y+2*step)*w+x])
+                let hline = ImageMath.median5(signed[y*w+max(0,x-2*step)],signed[y*w+max(0,x-step)],r,
+                    signed[y*w+min(w-1,x+step)],signed[y*w+min(w-1,x+2*step)])
+                // Subtract only the matching polarity. Unbounded subtraction followed
+                // by abs() would invent inverse-polarity cells next to a real cell.
+                let bright = max(0,r-max(0,v)-max(0,hline))
+                let dark = max(0,-r-max(0,-v)-max(0,-hline))
+                response[p] = settings.automaticPolarity ? max(bright,dark) : (settings.brightCells ? bright : dark)
+                let floor = max(0.8,1.4*noise[p])
+                threshold[p] = floor + max(0,18-floor)*pow(1-sensitivity,2)
+                seedThreshold[p] = threshold[p]+max(0.7,0.75*noise[p])
+                if response[p] > threshold[p] && background[p] > 55 { mask[p] = 1 }
+            }
         }
         // A one-pixel cross closing repairs broken rims and touching clumps.
         // We do not erase grid strips, which would cut cells crossing a ruling.
@@ -67,30 +86,35 @@ public enum CellDetector {
                 c.count += 1; c.sumX += x; c.sumY += y
                 c.minX = min(c.minX,x); c.maxX = max(c.maxX,x)
                 c.minY = min(c.minY,y); c.maxY = max(c.maxY,y)
-                if response[p] > threshold { c.original += 1 }
-                if response[p] > threshold + 3 { c.strong += 1 }
+                if response[p] > threshold[p] { c.original += 1 }
+                if response[p] > seedThreshold[p] { c.strong += 1 }
                 for ny in max(0,y-1)...min(h-1,y+1) { for nx in max(0,x-1)...min(w-1,x+1) {
                     let next = ny*w+nx
                     if mask[next] == 1 { mask[next] = 0; queue.append(next) }
                 } }
             }
-            guard c.diameter >= 3, c.diameter <= short * 0.2,
+            guard c.diameter >= 3, c.diameter <= short * 0.25,
                   c.count >= 6, c.aspect < 5, c.fill >= 0.16 else { report.rejectedShape += 1; continue }
             guard c.strong >= 3, Double(c.strong) / Double(max(1,c.original)) >= 0.25 else {
                 report.rejectedContrast += 1; continue
             }
             components.append(c)
         }
-        let isolatedSizes = components.filter { $0.aspect < 2 && $0.diameter <= short * 0.06 && $0.count >= 10 }.map(\.diameter)
+        let isolatedSizes = components.filter { $0.aspect < 2 && $0.diameter <= short * 0.15 && $0.count >= 10 }.map(\.diameter)
         let estimated = ImageMath.median(isolatedSizes.isEmpty ? components.filter { $0.aspect < 2 }.map(\.diameter) : isolatedSizes)
         report.estimatedDiameterPixels = estimated
-        let minimum = settings.automaticSize ? max(4, estimated > 0 ? estimated * 0.45 : 4) : max(3, settings.minimumDiameter * short)
+        // The upper sensitivity range also recovers small incomplete rims;
+        // manual diameter limits remain explicit user choices.
+        let recovery = max(0,(Double(sensitivity)-0.7)/0.3)
+        let sizeFraction = 0.5-0.2*recovery
+        let minimum = settings.automaticSize ? max(4, estimated > 0 ? estimated * sizeFraction : 4) : max(3, settings.minimumDiameter * short)
         let maximum = settings.automaticSize ? max(20, estimated * 5) : settings.maximumDiameter * short * 3
         let layout = grid ?? NeubauerGrid(mode: .custom)
         for c in components {
+            let shortSide = min(c.maxX-c.minX+1,c.maxY-c.minY+1)
             guard c.diameter >= minimum, c.diameter <= maximum,
-                  min(c.maxX-c.minX+1,c.maxY-c.minY+1) >= 4,
-                  Double(c.count) >= max(12, minimum * minimum * 0.18) else { report.rejectedShape += 1; continue }
+                  (shortSide >= 4 || (sensitivity > 0.8 && shortSide >= 3 && c.aspect <= 1.8)),
+                  Double(c.count) >= max(sensitivity > 0.8 ? 8 : 12, minimum * minimum * 0.18) else { report.rejectedShape += 1; continue }
             let extent = CountRegion(x: Double(c.minX)/Double(w), y: Double(c.minY)/Double(h),
                 width: Double(c.maxX-c.minX+1)/Double(w), height: Double(c.maxY-c.minY+1)/Double(h))
             let marker = CellMarker(x: (Double(c.sumX)/Double(c.count)+0.5)/Double(w),

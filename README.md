@@ -10,6 +10,7 @@
 - Keep the selected counting mode when a central grid is detected; switch to RBC mode with an optional shortcut.
 - Restore chamber or detection parameters with reset controls.
 - Locate grid boundaries automatically; adjust corners, sides or the entire frame using touch handles, a magnifier and 1/5 px controls.
+- Detect faint cells with noise-adaptive sensitivity and automatic, dark or bright target selection.
 - View images, markers, cell counts, concentration, total stock cells and required volume while tuning detection parameters.
 - Count a full 3×3 grid, four separately photographed corner squares, selected central RBC groups or a custom area.
 - Apply top/left inclusion and bottom/right exclusion. Count each connected cluster as one object.

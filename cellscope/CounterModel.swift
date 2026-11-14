@@ -125,6 +125,11 @@ enum EditMode: String, CaseIterable, Identifiable {
         catch { message = trf("error.records", error.localizedDescription) }
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("--ui-test-faint-cells") {
+            grid = NeubauerGrid(mode:.custom)
+            setImage(ImageService.faintCellTestImage(),demo:true)
+            detect()
+        }
         if let i = arguments.firstIndex(of: "--ui-test-central-mode"), i + 1 < arguments.count,
            let selectedMode = CountingMode(rawValue: arguments[i + 1]) {
             grid = NeubauerGrid(mode: selectedMode)

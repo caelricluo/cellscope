@@ -8,7 +8,7 @@
 
 **Mode choice.** Central-grid detection offers an RBC shortcut without blocking 4×, 10× or custom mode. When no matching frame is found, the selected mode and current frame remain in use.
 
-**Count.** Open **Detection settings** to adjust sensitivity, object polarity and automatic/manual cell size. The image, markers, count, concentration and required volume remain visible. Results refresh automatically after changes. **Add**, **Delete** and **Undo** edit the markers directly.
+**Count.** Open **Detection settings** to adjust sensitivity, object polarity and automatic/manual cell size. The image, markers, count, concentration and required volume remain visible. Select **Auto** to combine bright and dark cell support. **Dark** and **Bright** select a single polarity. The upper sensitivity range lowers the noise-relative contrast threshold and recovers smaller, incomplete rims. Results refresh automatically after changes. **Add**, **Delete** and **Undo** edit the markers directly.
 
 **Reset.** Reset chamber parameters restores the current selected area, 0.1 mm depth, dilution 2 and stock volume 1 mL. Images, frames and target count are preserved. The detection panel has a separate Reset control.
 
@@ -30,7 +30,7 @@
 
 **模式选择。** 检测到中央网格时提供红细胞模式快捷按钮，4×、10× 和自定义模式继续可用。没有匹配边框时，保留所选模式和当前边框继续计数。
 
-**计数。** 打开「检测参数」调整灵敏度、目标明暗和自动/手动尺寸。同屏保留图像、标记、数量、浓度和取液量，修改后自动更新。使用补标、删除和撤销直接编辑标记。
+**计数。** 打开「检测参数」调整灵敏度、目标明暗和自动/手动尺寸。同屏保留图像、标记、数量、浓度和取液量，选择「自动」合并亮暗细胞轮廓；「深色」或「浅色」使用单一明暗响应。高灵敏度区间进一步降低相对噪声阈值，并恢复较小、不完整的轮廓。修改后自动更新。使用补标、删除和撤销直接编辑标记。
 
 **重置。** 「重置计数板参数」恢复当前选格面积、深度 0.1 mm、稀释倍数 2 和原液体积 1 mL，保留图片、边框及目标细胞数。识别参数面板另有重置入口。
 

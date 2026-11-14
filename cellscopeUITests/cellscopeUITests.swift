@@ -7,6 +7,29 @@ final class cellscopeUITests: XCTestCase {
         app.launch(); return app
     }
     #if DEBUG
+    @MainActor func testFaintCellsSensitivityAndPolarityUpdateLive() {
+        let app = launchApp(arguments:["--ui-test-faint-cells"])
+        XCTAssertTrue(app.staticTexts["cellCount"].waitForExistence(timeout:15))
+        app.buttons["检测参数"].tap()
+        let live = app.staticTexts["liveCellCount"]
+        XCTAssertTrue(live.waitForExistence(timeout:5))
+        func expect(_ count:Int) {
+            let update = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","\(count) 个细胞"),object:live)
+            XCTAssertEqual(XCTWaiter.wait(for:[update],timeout:20),.completed)
+        }
+        app.sliders["sensitivitySlider"].adjust(toNormalizedSliderPosition:0)
+        expect(0)
+        app.sliders["sensitivitySlider"].adjust(toNormalizedSliderPosition:1)
+        expect(5)
+        let polarity = app.segmentedControls["cellPolarityPicker"]
+        polarity.buttons["深色"].tap();expect(2)
+        polarity.buttons["浅色"].tap();expect(3)
+        polarity.buttons["自动"].tap();expect(5)
+        XCTAssertTrue(app.staticTexts["liveConcentration"].label.contains("10.00"))
+        XCTAssertTrue(app.staticTexts["liveTotalCells"].label.contains("10.00"))
+        app.buttons["resetDetectionSettings"].tap();expect(0)
+        let shot = XCTAttachment(screenshot:app.screenshot());shot.name = "Faint-cell-live-settings";shot.lifetime = .keepAlways;add(shot)
+    }
     @MainActor func testCentralGridDoesNotRestrictOverviewOrTenX() {
         for selectedMode in ["overview","singleLarge"] {
             let app = launchApp(arguments:["--ui-test-central-mode",selectedMode])
