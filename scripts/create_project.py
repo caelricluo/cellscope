@@ -60,8 +60,8 @@ for name in ['project', 'app', 'test']:
             'SWIFT_ACTIVE_COMPILATION_CONDITIONS': 'DEBUG' if configuration == 'Debug' else '',
         }
         if name != 'project':
-            settings.update({'PRODUCT_NAME': '$(TARGET_NAME)', 'CURRENT_PROJECT_VERSION': '6',
-                'MARKETING_VERSION': '0.6.0', 'TARGETED_DEVICE_FAMILY': '1',
+            settings.update({'PRODUCT_NAME': '$(TARGET_NAME)', 'CURRENT_PROJECT_VERSION': '7',
+                'MARKETING_VERSION': '0.6.1', 'TARGETED_DEVICE_FAMILY': '1',
                 'CODE_SIGN_STYLE': 'Automatic', 'SUPPORTED_PLATFORMS': 'iphoneos iphonesimulator',
                 'SWIFT_EMIT_LOC_STRINGS': 'YES'})
         if name == 'app':

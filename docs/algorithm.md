@@ -17,9 +17,11 @@ Total stock cells = C × V
 Required stock volume = T × 1000 / C µL
 ```
 
+Concentration is calculated from area, depth and dilution. Stock volume determines total cells and available volume; target count determines required volume. An empty stock or target field leaves the other results visible.
+
 At 0.1 mm depth, 1–4 counted large squares use `mean(N) × D × 10⁴ cells/mL`. The standard five RBC groups cover 0.2 mm² and use `N × D × 50,000 cells/mL`.
 
-The implementation uses deterministic image processing rather than a trained cell classifier. Verification covers synthetic fixtures and a representative-image regression; no dataset-wide precision or recall is reported. Detection parameters, object selection and physical chamber dimensions define the counting result.
+Detection uses deterministic image processing. Verification covers cell detection, grid alignment, boundary rules, calculations, image persistence and UI workflows.
 
 Grid references: [Marienfeld](https://www.marienfeld-superior.com/counting-grids.html) and [Thermo Fisher](https://www.thermofisher.com/us/en/home/references/gibco-cell-culture-basics/cell-culture-protocols/counting-cells-in-a-hemacytometer.html).
 
@@ -31,6 +33,8 @@ Grid references: [Marienfeld](https://www.marienfeld-superior.com/counting-grids
 
 选中分格映射至四边形参考区域，并按对象边缘执行记上不记下、记左不记右。三线束取中线；倾斜边界附近使用图像轴向包围范围投影，采用较保守的边界范围。
 
+浓度按面积、深度和稀释倍数计算；原液体积决定总细胞数和可用体积，目标细胞数决定所需体积。清空原液体积或目标数时，其余结果继续显示。
+
 计算公式及单位见上文。默认深度 0.1 mm 时，采集中按已计数的 1–4 个大格计算浓度：平均计数 × 稀释倍数 × 10⁴ cells/mL；红细胞标准五中格面积为 0.2 mm²，浓度为五中格计数 × 稀释倍数 × 50,000 cells/mL。
 
-实现采用确定性图像处理，并非训练式细胞分类模型。验证包含合成测试和代表图像回归，未提供数据集层面的精确率或召回率。识别参数、目标选择和实际腔室尺寸共同决定计数结果。
+识别采用确定性图像处理。验证覆盖细胞检测、网格定位、压线规则、数值计算、图像保存与界面流程。

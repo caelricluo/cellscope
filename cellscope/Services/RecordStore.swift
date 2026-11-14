@@ -18,6 +18,8 @@ struct CapturedField {
     var image: UIImage
 }
 
+enum RecordImageFormat: String, Codable { case jpeg, png }
+
 struct CountRecord: Codable, Identifiable {
     var id: UUID
     var date: Date
@@ -34,7 +36,9 @@ struct CountRecord: Codable, Identifiable {
     var activeField: FieldPosition? = nil
     var alignment: GridQuad? = nil
     var requiresManualGrid: Bool? = nil
-    var imageName: String { id.uuidString + ".jpg" }
+    var imageFormat: RecordImageFormat? = nil
+    var imageExtension: String { imageFormat == .png ? "png" : "jpg" }
+    var imageName: String { id.uuidString + "." + imageExtension }
 }
 
 enum RecordStore {
@@ -52,17 +56,22 @@ enum RecordStore {
         return try JSONDecoder().decode([CountRecord].self, from: Data(contentsOf: index))
     }
     static func fieldImageName(_ position: FieldPosition, record: CountRecord) -> String {
-        record.id.uuidString + "-" + position.rawValue + ".jpg"
+        record.id.uuidString + "-" + position.rawValue + "." + record.imageExtension
     }
     static func save(_ record: CountRecord, image: UIImage, records: [CountRecord], fields: [CapturedField] = []) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        guard let data = image.jpegData(compressionQuality: 0.9) else { throw CocoaError(.fileWriteUnknown) }
+        func encode(_ image: UIImage) throws -> Data {
+            let data = record.imageFormat == .png ? image.pngData() : image.jpegData(compressionQuality:0.9)
+            guard let data else { throw CocoaError(.fileWriteUnknown) }
+            return data
+        }
+        let data = try encode(image)
         let imageURL = directory.appendingPathComponent(record.imageName)
         var written: [URL] = []
         do {
             try data.write(to: imageURL, options: .atomic); written.append(imageURL)
             for field in fields {
-                guard let data = field.image.jpegData(compressionQuality: 0.9) else { throw CocoaError(.fileWriteUnknown) }
+                let data = try encode(field.image)
                 let url = directory.appendingPathComponent(fieldImageName(field.state.position, record: record))
                 try data.write(to: url, options: .atomic); written.append(url)
             }

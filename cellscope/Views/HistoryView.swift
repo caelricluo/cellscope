@@ -30,11 +30,11 @@ struct HistoryView: View {
                                     }.padding(.vertical, 5)
                                 }.swipeActions { Button(role: .destructive) { deleting = record } label: { Label(tr("删除"), systemImage: "trash") } }
                             }
-                        } footer: { Text(tr("记录与原始图像保存在本机，卸载应用会移除本地数据。可导出 CSV 和带标记图像进行备份。")) }
+                        }
                     }.scrollContentBackground(.hidden)
                 }
             }.background(Palette.paper).navigationTitle(tr("样本记录"))
-                .confirmationDialog(tr("载入此记录？当前未保存的编辑将被替换。"), isPresented: Binding(get: { selected != nil }, set: { if !$0 { selected = nil } }), titleVisibility: .visible) {
+                .confirmationDialog(tr("载入样本？"), isPresented: Binding(get: { selected != nil }, set: { if !$0 { selected = nil } }), titleVisibility: .visible) {
                     Button(tr("载入样本")) { if let selected { model.restore(selected); onRestore() }; selected = nil }
                 }
                 .confirmationDialog(tr("删除此记录及其原始图像？"), isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible) {

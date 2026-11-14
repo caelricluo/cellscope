@@ -1,5 +1,19 @@
 # Changelog / 更新日志
 
+## 0.6.1
+
+- Kept concentration, total cells and required volume independent while editing stock volume or target count; omitted non-finite derived values.
+- Coupled manual diameter limits to maintain an ordered range and clear obsolete counts for invalid settings.
+- Fixed repeated photo imports, obsolete import callbacks, cancelled file-picker handling and cancellation of grid work.
+- Saved new sample images as lossless PNG while retaining legacy JPEG records; matched manual annotation number colors to their markers.
+- Removed advisory footers and repeated small print, simplified action labels and added bilingual copy checks.
+
+- 编辑原液体积或目标细胞数时，浓度、总数与取液量按各自依赖更新，排除非有限数值。
+- 手动直径上下限联动，异常设置清除旧计数。
+- 修复同一照片重复导入、过期导入回调、文件选择取消提示和网格任务取消。
+- 新样本图像无损保存为 PNG，兼容原有 JPEG 记录；手动标记编号与标记颜色保持一致。
+- 清理劝告式脚注与重复小字，简化操作文字，并增加中英文文案检查。
+
 ## 0.6.0
 
 - Replaced the fixed sensitivity floor with locally noise-adaptive support and seed thresholds; recovered compact faint targets in the highest sensitivity range.

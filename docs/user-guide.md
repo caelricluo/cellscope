@@ -12,11 +12,11 @@
 
 **Reset.** Reset chamber parameters restores the current selected area, 0.1 mm depth, dilution 2 and stock volume 1 mL. Images, frames and target count are preserved. The detection panel has a separate Reset control.
 
-**Calculate.** Enter chamber depth, total dilution, stock volume and target cell count. Selected grid squares determine the counting area; custom mode accepts a manually entered area. Results update without confirmation switches.
+**Calculate.** Enter chamber depth, total dilution, stock volume and target cell count. Selected grid squares determine the counting area; custom mode accepts a manually entered area. Concentration stays visible while editing stock volume or target count; each result updates from its own inputs.
 
 **Four corners.** Capture A1, A3, C1 and C3 separately. Each image retains its own frame, count and settings. The current result uses the unrounded mean of the counted corners and their total area. Once complete, all four are averaged. Concentration and total stock cells remain visible during acquisition.
 
-**Save and export.** Save a sample to the on-device library. Export creates a UTF-8 CSV report and annotated images; a four-corner set exports four images.
+**Save and export.** Save a sample to the on-device library. New image records use lossless PNG; existing JPEG records remain readable. Export creates a UTF-8 CSV report and annotated images; a four-corner set exports four images.
 
 **Rules.** Include top/left boundary objects and exclude bottom/right boundary objects. Use the middle ruling of a triple line. Count each connected cluster as one object.
 
@@ -34,11 +34,11 @@
 
 **重置。** 「重置计数板参数」恢复当前选格面积、深度 0.1 mm、稀释倍数 2 和原液体积 1 mL，保留图片、边框及目标细胞数。识别参数面板另有重置入口。
 
-**计算。** 输入腔室深度、总稀释倍数、原液体积和目标细胞数。所选网格决定面积，自定义模式手动输入面积。结果直接更新，无确认开关。
+**计算。** 输入腔室深度、总稀释倍数、原液体积和目标细胞数。所选网格决定面积，自定义模式手动输入面积。浓度、总细胞数和取液量按各自输入直接更新；编辑原液体积或目标数时保留其余结果。
 
 **四角。** 分别采集 A1、A3、C1、C3，各图保留独立边框、计数和参数。采集过程中按已计数角位和对应总面积实时平均，显示浓度与原液总细胞数；四角完成后使用全部四角的未经取整平均计数。
 
-**保存与导出。** 样本保存至本机记录。导出生成 UTF-8 CSV 报告和标记图，四角样本导出四张图。
+**保存与导出。** 样本保存至本机记录，新图像采用无损 PNG，原有 JPEG 记录继续可读。导出生成 UTF-8 CSV 报告和标记图，四角样本导出四张图。
 
 **规则。** 记上不记下，记左不记右；三线边界取中线。每个相连团块计作一个对象。
 

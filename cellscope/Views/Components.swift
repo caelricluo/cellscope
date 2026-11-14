@@ -40,7 +40,7 @@ struct EntryField: View {
                 Text(unit).font(.caption).foregroundStyle(Palette.muted)
             }.padding(12).background(Palette.paper, in: RoundedRectangle(cornerRadius: 11))
             if CountInputs.positiveNumber(text).map({ $0 >= minimum }) != true {
-                Text(minimum == 1 ? tr("请输入 ≥ 1 的数值") : tr("请输入大于 0 的数值")).font(.caption2).foregroundStyle(.red)
+                Text(minimum == 1 ? tr("数值 ≥ 1") : tr("数值 > 0")).font(.caption2).foregroundStyle(.red)
             }
         }
     }

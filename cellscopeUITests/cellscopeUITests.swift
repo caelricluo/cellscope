@@ -6,6 +6,127 @@ final class cellscopeUITests: XCTestCase {
         app.launchArguments = ["-AppleLanguages", "(\(language))", "-AppleLocale", language == "en" ? "en_US" : "zh_CN"] + arguments
         app.launch(); return app
     }
+    @MainActor func testTargetEditingKeepsResultsAndShowsVolumeShortfall() {
+        let app = launchApp()
+        app.buttons["countingMode-custom"].tap();app.buttons["loadDemo"].tap()
+        let ready = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","49"),object:app.staticTexts["cellCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[ready],timeout:20),.completed)
+        func enter(_ id:String,_ value:String) {
+            let field = app.textFields[id]
+            for _ in 0..<7 where !field.isHittable { app.swipeUp() }
+            field.tap();let old = field.value as? String ?? ""
+            field.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:old.count)+value)
+            let done = app.toolbars.buttons["完成"].firstMatch;if done.exists { done.tap() }
+        }
+        enter("所需细胞数","")
+        XCTAssertEqual(app.staticTexts["concentration"].label,"98.00 × 10⁴")
+        XCTAssertEqual(app.staticTexts["totalCells"].label,"98.00 × 10⁴")
+        XCTAssertEqual(app.staticTexts["requiredVolume"].label,"—")
+        XCTAssertTrue(app.buttons["saveRecord"].isEnabled)
+        enter("所需细胞数","100000")
+        let stock = app.textFields["原液总体积"]
+        for _ in 0..<7 where !stock.isHittable { app.swipeDown() }
+        enter("原液总体积","")
+        for _ in 0..<7 where !app.staticTexts["concentration"].isHittable { app.swipeUp() }
+        XCTAssertEqual(app.staticTexts["concentration"].label,"98.00 × 10⁴")
+        XCTAssertEqual(app.staticTexts["totalCells"].label,"—")
+        XCTAssertTrue(app.staticTexts["requiredVolume"].label.contains("102.04"))
+        for _ in 0..<7 where !stock.isHittable { app.swipeDown() }
+        enter("原液总体积","0.001")
+        for _ in 0..<7 where !app.otherElements["volumeShortfall"].isHittable { app.swipeUp() }
+        XCTAssertTrue(app.staticTexts["原液体积缺口"].exists)
+        XCTAssertTrue(app.staticTexts["101.04 µL"].exists)
+        XCTAssertFalse(app.staticTexts["所需体积超过现有原液，请减少目标细胞数或补充样本。"].exists)
+    }
+    @MainActor func testDiameterSlidersKeepRangeValidAndResultsCurrent() {
+        let app = launchApp()
+        app.buttons["countingMode-custom"].tap();app.buttons["loadDemo"].tap()
+        let ready = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","49"),object:app.staticTexts["cellCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[ready],timeout:20),.completed)
+        app.buttons["检测参数"].tap()
+        app.switches["automaticSizeToggle"].coordinate(withNormalizedOffset:CGVector(dx:0.9,dy:0.5)).tap()
+        let minimum = app.sliders["minimumDiameterSlider"]
+        for _ in 0..<4 where !minimum.isHittable { visible(app.collectionViews).swipeUp() }
+        minimum.adjust(toNormalizedSliderPosition:1)
+        let zero = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","0 个细胞"),object:app.staticTexts["liveCellCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[zero],timeout:20),.completed)
+        XCTAssertTrue(app.staticTexts["maximumDiameterValue"].label.contains("8.0"))
+        app.sliders["maximumDiameterSlider"].adjust(toNormalizedSliderPosition:0)
+        XCTAssertTrue(app.staticTexts["minimumDiameterValue"].label.contains("1.0"))
+        XCTAssertFalse(app.staticTexts["最小直径需小于最大直径"].exists)
+        app.buttons["resetDetectionSettings"].tap()
+        let recovered = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","49 个细胞"),object:app.staticTexts["liveCellCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[recovered],timeout:20),.completed)
+        XCTAssertTrue(app.staticTexts["liveTotalCells"].label.contains("98.00"))
+    }
+    @MainActor func testManualMarkerExportMatchesImageCount() {
+        let app = launchApp()
+        app.buttons["countingMode-custom"].tap();app.buttons["loadDemo"].tap()
+        let ready = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","49"),object:app.staticTexts["cellCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[ready],timeout:20),.completed)
+        app.buttons["全屏查看"].tap();visible(app.buttons.matching(identifier:"mode-add")).tap()
+        visible(app.scrollViews.matching(identifier:"imageCanvas")).coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.5)).tap()
+        XCTAssertEqual(app.staticTexts["fullscreenCount"].label,"50 个细胞")
+        app.navigationBars.buttons["完成"].tap()
+        let export = app.buttons["导出 CSV 和标记图"]
+        for _ in 0..<7 where !export.isHittable { app.swipeUp() }
+        export.tap()
+        let close = app.buttons.matching(NSPredicate(format:"label IN %@",["关闭","Close"])).firstMatch
+        XCTAssertTrue(close.waitForExistence(timeout:10),app.debugDescription)
+    }
+    @MainActor func testSamePhotoCanBeImportedAgain() {
+        let app = launchApp()
+        app.buttons["countingMode-custom"].tap()
+        func pick() {
+            let source = app.buttons["importPhoto"]
+            for _ in 0..<7 where !source.isHittable { app.swipeDown() }
+            source.tap()
+            let photo = app.images.matching(NSPredicate(format:"label BEGINSWITH[c] %@ OR label BEGINSWITH %@ OR label BEGINSWITH %@","Photo,","照片，","照片,")).firstMatch
+            XCTAssertTrue(photo.waitForExistence(timeout:10),app.debugDescription)
+            photo.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.5)).tap()
+            let replace = app.buttons["替换当前样本"]
+            if replace.waitForExistence(timeout:3) { replace.tap() }
+        }
+        pick()
+        let first = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label != %@","0"),object:app.staticTexts["cellCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[first],timeout:25),.completed)
+        let original = Int(app.staticTexts["cellCount"].label)!
+        app.buttons["全屏查看"].tap();visible(app.buttons.matching(identifier:"mode-add")).tap()
+        visible(app.scrollViews.matching(identifier:"imageCanvas")).coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.5)).tap()
+        XCTAssertEqual(app.staticTexts["fullscreenCount"].label,"\(original+1) 个细胞")
+        app.navigationBars.buttons["完成"].tap()
+        pick()
+        let second = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@",String(original)),object:app.staticTexts["cellCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[second],timeout:25),.completed)
+    }
+    @MainActor func testSavedImageRecountKeepsCount() {
+        let app = launchApp()
+        app.buttons["countingMode-custom"].tap();app.buttons["importPhoto"].tap()
+        let photo = app.images.matching(NSPredicate(format:"label BEGINSWITH[c] %@ OR label BEGINSWITH %@ OR label BEGINSWITH %@","Photo,","照片，","照片,")).firstMatch
+        XCTAssertTrue(photo.waitForExistence(timeout:10),app.debugDescription)
+        photo.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.5)).tap()
+        let ready = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label != %@","0"),object:app.staticTexts["cellCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[ready],timeout:25),.completed)
+        app.buttons["检测参数"].tap()
+        for _ in 0..<3 where !app.staticTexts["100%"].exists {
+            app.sliders["sensitivitySlider"].adjust(toNormalizedSliderPosition:1)
+        }
+        XCTAssertTrue(app.staticTexts["100%"].exists)
+        let preview = XCTNSPredicateExpectation(predicate:NSPredicate(format:"exists == true"),object:app.staticTexts["实时预览"])
+        XCTAssertEqual(XCTWaiter.wait(for:[preview],timeout:25),.completed)
+        app.navigationBars.buttons["完成"].tap()
+        let original = app.staticTexts["cellCount"].label
+        for _ in 0..<7 where !app.buttons["saveRecord"].isHittable { app.swipeUp() }
+        app.buttons["saveRecord"].tap();app.alerts.buttons["确定"].tap()
+        app.tabBars.buttons["样本记录"].tap()
+        app.staticTexts["未命名样本"].firstMatch.tap();app.buttons["载入样本"].tap()
+        let recount = app.buttons["detectCells"]
+        for _ in 0..<7 where !recount.isHittable { app.swipeDown() }
+        recount.tap()
+        let finished = XCTNSPredicateExpectation(predicate:NSPredicate(format:"enabled == true"),object:recount)
+        XCTAssertEqual(XCTWaiter.wait(for:[finished],timeout:25),.completed)
+        XCTAssertEqual(app.staticTexts["cellCount"].label,original)
+    }
     #if DEBUG
     @MainActor func testFaintCellsSensitivityAndPolarityUpdateLive() {
         let app = launchApp(arguments:["--ui-test-faint-cells"])

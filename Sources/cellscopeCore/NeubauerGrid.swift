@@ -14,7 +14,7 @@ public enum CountingMode: String, Codable, CaseIterable, Identifiable, Sendable 
     public var instruction: String {
         switch self {
         case .overview: tr("框住完整 3 × 3 mm 九宫格；可统计全部九格或选择四角大格。")
-        case .singleLarge: tr("分别拍摄四角的 1 × 1 mm 大格；四张图计数后取平均，再换算原液浓度。")
+        case .singleLarge: tr("分别拍摄四角的 1 × 1 mm 大格，按已计数大格取平均计算浓度。")
         case .redBloodCells: tr("框住中央完整 1 × 1 mm 大格；按 5 × 5 中格定位，默认统计四角与中心五个中格。")
         case .custom: tr("框住面积已知的矩形，手动填写实际计数面积。")
         }

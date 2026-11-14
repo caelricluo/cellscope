@@ -44,8 +44,6 @@ struct CountWorkspace: View {
                         calibration
                         calculation
                     } else { emptyWorkflow }
-                    Text(tr("本机离线处理 · 图像无需上传")).font(.caption2).foregroundStyle(Palette.muted)
-                        .frame(maxWidth: .infinity).padding(.bottom, 8)
                 }.padding(.horizontal, 20).padding(.top, 12)
             }
             .background(Palette.paper).clipped().navigationBarHidden(true)
@@ -58,33 +56,43 @@ struct CountWorkspace: View {
                     defer { if access { url.stopAccessingSecurityScopedResource() } }
                     guard let image = UIImage(data: try Data(contentsOf: url)) else { throw CocoaError(.fileReadCorruptFile) }
                     model.setImage(image)
-                } catch { model.message = trf("error.file_import", error.localizedDescription) }
+                } catch {
+                    if (error as? CocoaError)?.code != .userCancelled {
+                        model.message = trf("error.file_import", error.localizedDescription)
+                    }
+                }
             }
             .fullScreenCover(isPresented: $showCamera) { CameraPicker { model.setImage($0) }.ignoresSafeArea() }
             .fullScreenCover(isPresented: $showFullscreen) { fullscreenEditor }
             .sheet(isPresented: $showDetectionSettings) { detectionSettings }
-            .confirmationDialog(tr("载入新图会替换当前未保存的样本。"), isPresented: $confirmReplace, titleVisibility: .visible) {
+            .confirmationDialog(tr("替换当前图像？"), isPresented: $confirmReplace, titleVisibility: .visible) {
                 Button(tr("替换当前样本")) { pendingAction?(); pendingAction = nil }
                 Button(tr("取消"), role: .cancel) { pendingAction = nil }
             }
+            .onChange(of: confirmReplace) { _, presented in if !presented { pendingAction = nil } }
             .onChange(of: selection) { _, item in
+                guard let item else { return }
+                let importImage = model.image
                 let importField = model.activeField
                 let importMode = model.grid.mode
                 Task {
-                    guard let item else { return }
+                    defer { if selection == item { selection = nil } }
                     do {
-                        guard let data = try await item.loadTransferable(type: Data.self), let image = UIImage(data: data) else {
+                        let data = try await item.loadTransferable(type:Data.self)
+                        guard selection == item, model.image === importImage else { return }
+                        guard let data, let image = UIImage(data:data) else {
                             model.message = tr("无法读取这张照片，请选择其他图像。"); return
                         }
-                        guard selection == item else { return }
                         guard model.grid.mode == importMode,
                               importMode != .singleLarge || model.activeField == importField else {
-                            model.message = tr("照片读取期间切换了计数模式或角位，请在目标角位重新导入，避免照片归错位置。")
+                            model.message = tr("导入已取消：计数模式或角位已切换。")
                             selection = nil
                             return
                         }
                         replace { model.setImage(image) }
-                    } catch { model.message = trf("error.photo_import", error.localizedDescription) }
+                    } catch {
+                        if selection == item, model.image === importImage { model.message = trf("error.photo_import", error.localizedDescription) }
+                    }
                 }
             }
         }
@@ -283,7 +291,7 @@ struct CountWorkspace: View {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(tr("原液总细胞数")).font(.caption).foregroundStyle(.white.opacity(0.7))
-                            Text(formatted(result.totalCells)).font(.system(.title3, design: .rounded, weight: .medium)).accessibilityIdentifier("totalCells")
+                            Text(result.totalCells.map { formatted($0) } ?? "—").font(.system(.title3, design: .rounded, weight: .medium)).accessibilityIdentifier("totalCells")
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 6) {
@@ -293,23 +301,18 @@ struct CountWorkspace: View {
                         }
                     }
                 }.foregroundStyle(.white).padding(20).background(Palette.ink, in: RoundedRectangle(cornerRadius: 18))
-                if result.exceedsAvailable {
-                    Label(tr("所需体积超过现有原液，请减少目标细胞数或补充样本。"), systemImage: "exclamationmark.triangle")
-                        .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                if result.exceedsAvailable, let required = result.requiredMicroliters, let available = result.availableMicroliters {
+                    HStack {
+                        Text(tr("原液体积缺口"))
+                        Spacer()
+                        Text(formatted(required-available) + " µL").monospacedDigit()
+                    }.font(.subheadline).foregroundStyle(Palette.ink).accessibilityIdentifier("volumeShortfall")
                 }
-                if result.concentration == 0 { Text(tr("计数为 0")).font(.caption).foregroundStyle(.orange) }
             } else {
                 Label(model.grid.mode == .singleLarge ? trf("fields.progress", model.completedFields) : tr("导入图像、填写参数后自动计算。"), systemImage: "ruler")
                     .font(.subheadline).foregroundStyle(Palette.muted).padding(16).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Palette.paper, in: RoundedRectangle(cornerRadius: 14))
             }
-            Text(tr("浓度 = 计数 × 稀释倍数 × 1000 ÷ (面积 × 深度)\n取液体积 (µL) = 目标细胞数 ÷ 浓度 × 1000"))
-                .font(.system(size: 10, design: .monospaced)).foregroundStyle(Palette.muted).lineSpacing(4)
-            if model.grid.mode == .singleLarge {
-                Text(trf("fields.calculation", model.completedFields))
-                    .font(.caption2).foregroundStyle(Palette.muted)
-            }
-            Text(tr("计数口径：每个相连细胞团块计作一个对象。")).font(.caption2).foregroundStyle(Palette.muted)
             HStack(spacing: 12) {
                 Button { model.save() } label: { Label(tr("保存记录"), systemImage: "tray.and.arrow.down") }.buttonStyle(PrimaryButton())
                     .accessibilityIdentifier("saveRecord")
@@ -389,7 +392,7 @@ struct CountWorkspace: View {
                         Spacer()
                         Text(result.requiredMicroliters.map { trf("live.volume", formatted($0)) } ?? tr("取液 —"))
                     }.font(.caption).foregroundStyle(Palette.muted).padding(.horizontal,20).padding(.bottom,6)
-                    Text(trf("live.total_cells", formatted(result.totalCells)))
+                    Text(trf("live.total_cells", result.totalCells.map { formatted($0) } ?? "—"))
                         .font(.caption).foregroundStyle(Palette.muted).padding(.horizontal,20).padding(.bottom,10)
                         .frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier("liveTotalCells")
                 }
@@ -407,11 +410,10 @@ struct CountWorkspace: View {
                         Toggle(tr("自动估计细胞直径"), isOn: $model.settings.automaticSize).accessibilityIdentifier("automaticSizeToggle")
                         if model.estimatedDiameterPixels > 0 { Text(trf("diameter.estimate", Int(model.estimatedDiameterPixels))).font(.caption) }
                         if !model.settings.automaticSize {
-                            Text(trf("diameter.minimum", model.settings.minimumDiameter.formatted(.percent.precision(.fractionLength(1)))))
-                            Slider(value: $model.settings.minimumDiameter, in: 0.002...0.08, step: 0.001).accessibilityIdentifier("minimumDiameterSlider")
-                            Text(trf("diameter.maximum", model.settings.maximumDiameter.formatted(.percent.precision(.fractionLength(1)))))
-                            Slider(value: $model.settings.maximumDiameter, in: 0.01...0.16, step: 0.001).accessibilityIdentifier("maximumDiameterSlider")
-                            if model.settings.minimumDiameter > model.settings.maximumDiameter { Text(tr("最小直径需小于最大直径")).foregroundStyle(.red) }
+                            Text(trf("diameter.minimum", model.settings.minimumDiameter.formatted(.percent.precision(.fractionLength(1))))).accessibilityIdentifier("minimumDiameterValue")
+                            Slider(value: Binding(get: { model.settings.minimumDiameter }, set: { model.settings.setMinimumDiameter($0) }), in: 0.002...0.08, step: 0.001).accessibilityIdentifier("minimumDiameterSlider")
+                            Text(trf("diameter.maximum", model.settings.maximumDiameter.formatted(.percent.precision(.fractionLength(1))))).accessibilityIdentifier("maximumDiameterValue")
+                            Slider(value: Binding(get: { model.settings.maximumDiameter }, set: { model.settings.setMaximumDiameter($0) }), in: 0.01...0.16, step: 0.001).accessibilityIdentifier("maximumDiameterSlider")
                         }
                     }
                 }

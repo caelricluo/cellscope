@@ -1,5 +1,21 @@
 # Verification / 验证记录
 
+## 0.6.1
+
+**English:** 35 core tests and 14 UI workflows passed. New coverage checks independent calculation inputs, finite output values, linked diameter limits, repeat import of the same photo, manual-marker export and sample-image persistence. The previous counting, localization, frame-editing, reset, four-corner mean, central-grid mode choice and live faint-cell workflows remain covered.
+
+A microscopy reference was imported through the iOS photo picker, adjusted to 100% sensitivity, saved as PNG, loaded and recounted with an unchanged result. PNG primary/corner image files and legacy JPEG records were checked together. Export verification checked a 50-object CSV and the orange manual-marker number in the annotated image.
+
+English and Simplified Chinese each contain 238 referenced UI keys. Localization checks cover key/placeholder parity and retired advisory phrases. iPhoneOS arm64 Release, iOS Simulator and Mac Catalyst builds passed; IPA integrity, platform, architecture, localization and SHA-256 checks passed.
+
+**简体中文：** 35 项核心测试与 14 项 UI 流程通过。新增覆盖验证计算输入独立性、有限数值输出、直径上下限联动、同一照片重复导入、手动标记导出和样本图像保存；继续覆盖常规计数、本地化、边框编辑、重置、四角平均、中央网格模式选择和浅弱目标实时调参。
+
+显微参考图经 iOS 相册导入，灵敏度调至 100%，以 PNG 保存、载入并重新检测，计数保持一致。PNG 主图、四角图和原有 JPEG 记录共同校验通过。导出检查确认 CSV 为 50 个对象，标记图中的手动标记编号为橙色。
+
+中英文各含 238 个在用 UI 文案键，校验覆盖键与占位符一致性，以及已移除的劝告式文字。iPhoneOS arm64 Release、iOS 模拟器和 Mac Catalyst 编译通过；IPA 完整性、平台、架构、本地化与 SHA-256 校验通过。
+
+Test bundles / 测试包：`TestResults/AuditNewFlowsFinal`（数值编辑与直径联动）、`TestResults/AuditImportsExport`、`TestResults/AuditReleaseRegression`、`TestResults/AuditIndependentCalculations`、`TestResults/AuditMicroscopeRoundtrip`、`TestResults/AuditDetectionModes`。
+
 ## 0.6.0
 
 **English:** 31 core tests and 9 UI workflows passed. Core coverage adds mixed bright/dark faint targets, a smaller faint target, sensitivity endpoints, manual polarity, noise/ruling rejection, settings compatibility, directional median statistics and a tilted sparse grid beside dense bands. Seven Release workflows cover counting, live calculations, reset, frame editing, localization, records and four-corner averaging. Two Debug workflows verify live faint-target controls and unrestricted 4×/10× use after central-grid recognition.

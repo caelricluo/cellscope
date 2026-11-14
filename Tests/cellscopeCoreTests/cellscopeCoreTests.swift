@@ -5,7 +5,7 @@ final class cellscopeCoreTests: XCTestCase {
     func testStandardHemocytometerAndVolume() throws {
         let result = try XCTUnwrap(CountInputs().calculate(count: 50))
         XCTAssertEqual(result.concentration, 1_000_000, accuracy: 0.0001)
-        XCTAssertEqual(result.totalCells, 1_000_000, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(result.totalCells), 1_000_000, accuracy: 0.0001)
         XCTAssertEqual(try XCTUnwrap(result.requiredMicroliters), 100, accuracy: 0.0001)
         XCTAssertFalse(result.exceedsAvailable)
     }
@@ -15,7 +15,7 @@ final class cellscopeCoreTests: XCTestCase {
         inputs.suspensionVolume = "0.5"; inputs.target = "5000000"
         let result = try XCTUnwrap(inputs.calculate(count: 10))
         XCTAssertEqual(result.concentration, 25_000_000, accuracy: 0.001)
-        XCTAssertEqual(result.totalCells, 12_500_000, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(result.totalCells), 12_500_000, accuracy: 0.001)
         XCTAssertEqual(try XCTUnwrap(result.requiredMicroliters), 200, accuracy: 0.001)
     }
     func testInvalidParametersAndZeroCount() throws {
@@ -26,7 +26,9 @@ final class cellscopeCoreTests: XCTestCase {
         var inputs = CountInputs(); inputs.dilution = "0.5"
         XCTAssertNil(inputs.calculate(count: 30))
         inputs = CountInputs(); inputs.target = "1e308"; inputs.area = "1e308"
-        XCTAssertNil(inputs.calculate(count: 10))
+        let extreme = try XCTUnwrap(inputs.calculate(count:10))
+        XCTAssertTrue(extreme.concentration.isFinite)
+        XCTAssertNil(extreme.requiredMicroliters)
         let zero = try XCTUnwrap(CountInputs().calculate(count: 0))
         XCTAssertEqual(zero.concentration, 0)
         XCTAssertNil(zero.requiredMicroliters)
@@ -73,4 +75,52 @@ final class cellscopeCoreTests: XCTestCase {
         settings.sensitivity = .nan
         XCTAssertTrue(CellDetector.detect(fixture(), region: CountRegion(), settings: settings).isEmpty)
     }
+    func testTargetEditingKeepsConcentrationAndTotal() throws {
+        for target in ["","0","-1","abc","nan","inf"] {
+            var inputs = CountInputs();inputs.target = target
+            let result = try XCTUnwrap(inputs.calculate(count:50),target)
+            XCTAssertEqual(result.concentration,1_000_000)
+            XCTAssertEqual(result.totalCells,1_000_000)
+            XCTAssertNil(result.requiredMicroliters)
+        }
+    }
+    func testVolumeOverflowDoesNotProduceInfiniteResults() throws {
+        var inputs = CountInputs();inputs.suspensionVolume = "1e307"
+        let zero = try XCTUnwrap(inputs.calculate(count:0))
+        XCTAssertEqual(zero.concentration,0)
+        XCTAssertEqual(zero.totalCells,0)
+        XCTAssertNil(zero.availableMicroliters)
+        let dense = try XCTUnwrap(inputs.calculate(count:50))
+        XCTAssertNil(dense.totalCells)
+        XCTAssertNil(dense.availableMicroliters)
+        XCTAssertEqual(dense.requiredMicroliters,100)
+    }
+    func testStockVolumeEditingKeepsConcentrationAndRequiredVolume() throws {
+        for stock in ["","0","-1","nan","abc"] {
+            var inputs = CountInputs();inputs.suspensionVolume = stock
+            let result = try XCTUnwrap(inputs.calculate(count:50),stock)
+            XCTAssertEqual(result.concentration,1_000_000)
+            XCTAssertEqual(result.requiredMicroliters,100)
+            XCTAssertNil(result.totalCells)
+            XCTAssertNil(result.availableMicroliters)
+            XCTAssertFalse(result.exceedsAvailable)
+        }
+    }
+    func testDiameterEditsKeepMinimumAndMaximumOrdered() {
+        var settings = DetectionSettings();settings.automaticSize = false
+        settings.setMinimumDiameter(0.08)
+        XCTAssertEqual(settings.minimumDiameter,0.08)
+        XCTAssertEqual(settings.maximumDiameter,0.08)
+        XCTAssertTrue(settings.isValid)
+        settings.setMaximumDiameter(0.02)
+        XCTAssertEqual(settings.minimumDiameter,0.02)
+        XCTAssertEqual(settings.maximumDiameter,0.02)
+        XCTAssertTrue(settings.isValid)
+        let valid = settings
+        settings.setMinimumDiameter(.nan);settings.setMaximumDiameter(-1)
+        XCTAssertEqual(settings,valid)
+        settings.minimumDiameter = 0.03
+        XCTAssertFalse(settings.isValid)
+    }
+
 }

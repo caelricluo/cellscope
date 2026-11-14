@@ -24,10 +24,7 @@ public enum CellDetector {
             componentsExamined: 0, rejectedShape: 0, rejectedContrast: 0, excludedByRegion: 0)
         let w = image.width, h = image.height
         guard w > 4, h > 4, w <= 2048, h <= 2048, image.pixels.count == w * h,
-              region.isValid, settings.sensitivity.isFinite,
-              settings.minimumDiameter.isFinite, settings.maximumDiameter.isFinite,
-              (settings.automaticSize || (settings.minimumDiameter > 0 && settings.maximumDiameter >= settings.minimumDiameter &&
-              settings.maximumDiameter <= 1)), grid?.isValid != false else { return report }
+              region.isValid, settings.isValid, grid?.isValid != false else { return report }
         let short = Double(min(w, h))
         let pixels = image.pixels.map(Float.init)
         let fine = ImageMath.gaussian(pixels, width: w, height: h, sigma: 0.7)

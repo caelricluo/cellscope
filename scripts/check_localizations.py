@@ -18,6 +18,13 @@ def main():
     for key in english:
         assert english[key] and chinese[key], f"Empty translation: {key}"
         assert sorted(pattern.findall(english[key])) == sorted(pattern.findall(chinese[key])), f"Format mismatch: {key}"
+    retired_copy = ["仅供参考", "仅用于研究", "不用于诊断", "请自行", "逐一复核", "已确认框选",
+                    "免责声明", "本模板不适用", "卸载应用", "for research use only", "not for clinical",
+                    "at your own risk", "not medical advice", "please verify", "uninstall"]
+    for language, resources in [("en",english),("zh-Hans",chinese)]:
+        for key, value in resources.items():
+            copy = (key+" "+value).casefold()
+            assert not any(phrase.casefold() in copy for phrase in retired_copy), f"Retired UI copy in {language}: {key}"
     used = set()
     for base in [ROOT / "cellscope", ROOT / "Sources"]:
         for source in base.rglob("*.swift"):

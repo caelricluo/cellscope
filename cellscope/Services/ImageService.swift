@@ -114,10 +114,11 @@ enum ImageService {
             for (index, marker) in markers.enumerated() {
                 let p = CGPoint(x: marker.x * image.size.width, y: marker.y * image.size.height)
                 let r = marker.radius * min(image.size.width, image.size.height)
-                c.setStrokeColor((marker.isManual ? UIColor.systemOrange : UIColor.systemTeal).cgColor)
+                let color = marker.isManual ? UIColor.systemOrange : UIColor.systemTeal
+                c.setStrokeColor(color.cgColor)
                 c.strokeEllipse(in: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
                 ("\(index + 1)" as NSString).draw(at: CGPoint(x: p.x + r, y: p.y - r), withAttributes: [
-                    .font: UIFont.monospacedDigitSystemFont(ofSize: 11, weight: .bold), .foregroundColor: UIColor.systemTeal
+                    .font: UIFont.monospacedDigitSystemFont(ofSize: 11, weight: .bold), .foregroundColor: color
                 ])
             }
         }

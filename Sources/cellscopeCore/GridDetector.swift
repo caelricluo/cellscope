@@ -29,11 +29,14 @@ public enum GridDetector {
         let g = ImageMath.gaussian(image.pixels.map(Float.init), width: w, height: h, sigma: 0.7)
         var cornerScore = -Double.infinity
         for polarity in [Float(1), Float(-1)] {
+            guard !Task.isCancelled else { return result }
             var vx = [Float](repeating: 0, count: w*h), hy = vx
             var xp = [Double](repeating: 0, count: w), yp = [Double](repeating: 0, count: h)
             var xn = [Int](repeating: 0, count: w), yn = [Int](repeating: 0, count: h)
             let delta = max(3, min(w,h)/288)
-            for y in delta..<(h-delta) { for x in delta..<(w-delta) {
+            for y in delta..<(h-delta) {
+                guard !Task.isCancelled else { return result }
+                for x in delta..<(w-delta) {
                 let p = y*w+x
                 guard g[p] > 65 else { continue }
                 vx[p] = max(0, polarity * (g[p] - (g[p-delta]+g[p+delta])/2))
@@ -89,7 +92,9 @@ public enum GridDetector {
         guard peaks.count >= intervals+1 else { return [] }
         var candidates: [Lattice] = []
         let minSpan = Double(p.count)*(intervals == 20 ? 0.18 : 0.42)
-        for a in peaks { for b in peaks where b > a && Double(b-a) >= minSpan && Double(b-a) <= Double(p.count)*0.94 {
+        for a in peaks {
+            guard !Task.isCancelled else { return [] }
+            for b in peaks where b > a && Double(b-a) >= minSpan && Double(b-a) <= Double(p.count)*0.94 {
             let step = Double(b-a)/Double(intervals)
             guard step >= (intervals == 20 ? 8 : 15) else { continue }
             var values: [Double] = []

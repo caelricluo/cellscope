@@ -32,7 +32,7 @@ struct CountingModePanel: View {
             }.accessibilityIdentifier("countingMode-custom")
             Text(model.grid.mode.instruction).font(.caption).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
         }.surface().disabled(model.isDetecting)
-        .confirmationDialog(tr("切换模式会清空当前标记和四角照片记录；请先保存需要保留的样本。"), isPresented: Binding(get: { pendingMode != nil }, set: { if !$0 { pendingMode = nil } }), titleVisibility: .visible) {
+        .confirmationDialog(tr("切换计数模式并重新计数？"), isPresented: Binding(get: { pendingMode != nil }, set: { if !$0 { pendingMode = nil } }), titleVisibility: .visible) {
             Button(tr("切换模式")) { if let pendingMode { model.changeCountingMode(pendingMode) }; pendingMode = nil }
         }
     }

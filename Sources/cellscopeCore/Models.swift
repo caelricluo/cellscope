@@ -45,6 +45,20 @@ public struct DetectionSettings: Codable, Equatable, Sendable {
         set { automaticPolarity = newValue == .automatic; brightCells = newValue == .bright }
     }
     public var automaticSize: Bool = true
+    public var isValid: Bool {
+        sensitivity.isFinite && minimumDiameter.isFinite && maximumDiameter.isFinite &&
+        (automaticSize || (minimumDiameter > 0 && maximumDiameter >= minimumDiameter && maximumDiameter <= 1))
+    }
+    public mutating func setMinimumDiameter(_ value: Double) {
+        guard value.isFinite, value > 0, value <= 1 else { return }
+        minimumDiameter = value
+        maximumDiameter = max(maximumDiameter,value)
+    }
+    public mutating func setMaximumDiameter(_ value: Double) {
+        guard value.isFinite, value > 0, value <= 1 else { return }
+        maximumDiameter = value
+        minimumDiameter = min(minimumDiameter,value)
+    }
     public init() {}
     private enum CodingKeys: String, CodingKey { case sensitivity, minimumDiameter, maximumDiameter, brightCells, automaticSize, automaticPolarity }
     public init(from decoder: Decoder) throws {
@@ -84,17 +98,27 @@ public struct CountInputs: Codable, Equatable, Sendable {
     public func calculate(count: Int) -> CountResult? {
         guard count >= 0,
               let area = Self.positiveNumber(area), let depth = Self.positiveNumber(depth),
-              let dilution = Self.positiveNumber(dilution), dilution >= 1,
-              let volume = Self.positiveNumber(suspensionVolume),
-              let target = Self.positiveNumber(target) else { return nil }
+              let dilution = Self.positiveNumber(dilution), dilution >= 1 else { return nil }
         let sampledVolumeML = area * depth / 1000
         guard sampledVolumeML.isFinite, sampledVolumeML > 0 else { return nil }
         let concentration = Double(count) * dilution / sampledVolumeML
-        let total = concentration * volume
-        let required = concentration > 0 ? target / concentration * 1000 : nil
-        guard concentration.isFinite, total.isFinite, required?.isFinite != false else { return nil }
+        guard concentration.isFinite else { return nil }
+        let volume = Self.positiveNumber(suspensionVolume)
+        let total = volume.flatMap { volume -> Double? in
+            let value = concentration * volume
+            return value.isFinite ? value : nil
+        }
+        let available = volume.flatMap { volume -> Double? in
+            let value = volume * 1000
+            return value.isFinite ? value : nil
+        }
+        let required = Self.positiveNumber(target).flatMap { target -> Double? in
+            guard concentration > 0 else { return nil }
+            let value = target / concentration * 1000
+            return value.isFinite ? value : nil
+        }
         return CountResult(concentration: concentration, totalCells: total,
-                           requiredMicroliters: required, availableMicroliters: volume * 1000)
+                           requiredMicroliters: required, availableMicroliters: available)
     }
     public mutating func resetChamberParameters(for grid: NeubauerGrid) {
         let defaults = CountInputs()
@@ -125,8 +149,11 @@ public struct CountInputs: Codable, Equatable, Sendable {
 
 public struct CountResult: Sendable {
     public let concentration: Double
-    public let totalCells: Double
+    public let totalCells: Double?
     public let requiredMicroliters: Double?
-    public let availableMicroliters: Double
-    public var exceedsAvailable: Bool { (requiredMicroliters ?? 0) > availableMicroliters }
+    public let availableMicroliters: Double?
+    public var exceedsAvailable: Bool {
+        guard let requiredMicroliters, let availableMicroliters else { return false }
+        return requiredMicroliters > availableMicroliters
+    }
 }
