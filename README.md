@@ -7,8 +7,10 @@
 ## Features
 
 - Capture images with the camera or import from the photo library.
+- Keep the selected counting mode when a central grid is detected; switch to RBC mode with an optional shortcut.
+- Restore chamber or detection parameters with reset controls.
 - Locate grid boundaries automatically; adjust corners, sides or the entire frame using touch handles, a magnifier and 1/5 px controls.
-- View images, markers, cell counts, concentration and required volume while tuning detection parameters.
+- View images, markers, cell counts, concentration, total stock cells and required volume while tuning detection parameters.
 - Count a full 3×3 grid, four separately photographed corner squares, selected central RBC groups or a custom area.
 - Apply top/left inclusion and bottom/right exclusion. Count each connected cluster as one object.
 - Save samples locally and export CSV reports with annotated images.
@@ -33,7 +35,7 @@ For a desktop preview, run `Open cellscope.command`. The Mac Catalyst preview us
 | Mode | Reference region | Counted area |
 | --- | --- | --- |
 | Full grid | Complete 3×3 mm grid | 9 mm², four corners at 4 mm², or selected large squares |
-| Four corners | Separate A1, A3, C1 and C3 images | Four 1 mm² squares; concentration from the mean count |
+| Four corners | Separate A1, A3, C1 and C3 images | 1–4 counted 1 mm² squares; running mean, then the full four-corner mean |
 | RBC | Central 1×1 mm square with 5×5 groups | Standard four corners plus center: 0.2 mm² |
 | Custom | User-defined region | Enter the physical area in mm² |
 

@@ -1,10 +1,74 @@
 import XCTest
 
 final class cellscopeUITests: XCTestCase {
-    @MainActor private func launchApp(language: String = "zh-Hans") -> XCUIApplication {
+    @MainActor private func launchApp(language: String = "zh-Hans", arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-AppleLanguages", "(\(language))", "-AppleLocale", language == "en" ? "en_US" : "zh_CN"]
+        app.launchArguments = ["-AppleLanguages", "(\(language))", "-AppleLocale", language == "en" ? "en_US" : "zh_CN"] + arguments
         app.launch(); return app
+    }
+    #if DEBUG
+    @MainActor func testCentralGridDoesNotRestrictOverviewOrTenX() {
+        for selectedMode in ["overview","singleLarge"] {
+            let app = launchApp(arguments:["--ui-test-central-mode",selectedMode])
+            let status = app.staticTexts.matching(identifier:"gridDetectionStatus").firstMatch
+            let central = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label CONTAINS %@","中央"),object:status)
+            XCTAssertEqual(XCTWaiter.wait(for:[central],timeout:40),.completed)
+            let counted = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label != %@","0"),object:app.staticTexts["cellCount"])
+            XCTAssertEqual(XCTWaiter.wait(for:[counted],timeout:40),.completed)
+            XCTAssertTrue(app.buttons["switchToRBC"].exists)
+            XCTAssertTrue(app.buttons["detectCells"].isEnabled)
+            if selectedMode == "overview" {
+                XCTAssertTrue(app.staticTexts["gridArea"].label.contains("9"))
+            } else { XCTAssertTrue(app.buttons["field-A1"].exists) }
+            app.buttons["detectCells"].tap()
+            let ready = XCTNSPredicateExpectation(predicate:NSPredicate(format:"enabled == true"),object:app.buttons["detectCells"])
+            XCTAssertEqual(XCTWaiter.wait(for:[ready],timeout:40),.completed)
+            let concentration = app.staticTexts["concentration"]
+            for _ in 0..<6 where !concentration.isHittable { app.swipeUp() }
+            XCTAssertTrue(concentration.exists)
+            XCTAssertTrue(app.staticTexts["totalCells"].exists)
+            XCTAssertTrue(app.buttons["saveRecord"].isEnabled)
+            app.buttons["saveRecord"].tap(); app.alerts.buttons["确定"].tap()
+            let savedCount = app.staticTexts["cellCount"].label
+            app.tabBars.buttons["样本记录"].tap()
+            let sample = selectedMode == "overview" ? "模拟样本 · 4× · 完整九宫格" : "模拟样本 · 10× · 单个大格"
+            app.staticTexts.matching(identifier:sample).firstMatch.tap()
+            app.buttons["载入样本"].tap()
+            XCTAssertEqual(app.staticTexts["cellCount"].label,savedCount)
+            if selectedMode == "singleLarge" { XCTAssertTrue(app.staticTexts["countedFields"].label.contains("1 / 4")) }
+            XCTAssertTrue(app.staticTexts["concentration"].exists)
+            app.terminate()
+        }
+    }
+    #endif
+    @MainActor func testChamberResetRestoresConcentrationAndTotal() {
+        let app = launchApp()
+        app.buttons["countingMode-custom"].tap(); app.buttons["loadDemo"].tap()
+        let ready = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","49"),object:app.staticTexts["cellCount"])
+        XCTAssertEqual(XCTWaiter.wait(for:[ready],timeout:20),.completed)
+        func enter(_ id:String,_ value:String) {
+            let field = app.textFields[id]
+            for _ in 0..<5 where !field.isHittable { app.swipeUp() }
+            field.tap()
+            let old = field.value as? String ?? ""
+            field.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:old.count)+value)
+            let done = app.toolbars.buttons["完成"].firstMatch
+            if done.exists { done.tap() }
+        }
+        enter("框选面积","2")
+        enter("腔室深度","0.2")
+        enter("总稀释倍数","5")
+        enter("原液总体积","0.5")
+        let reset = app.buttons["resetChamberParameters"]
+        for _ in 0..<6 where !reset.isHittable { app.swipeDown() }
+        reset.tap()
+        XCTAssertEqual(app.textFields["框选面积"].value as? String,"1")
+        XCTAssertEqual(app.textFields["腔室深度"].value as? String,"0.1")
+        XCTAssertEqual(app.textFields["总稀释倍数"].value as? String,"2")
+        XCTAssertEqual(app.textFields["原液总体积"].value as? String,"1")
+        for _ in 0..<6 where !app.staticTexts["concentration"].isHittable { app.swipeUp() }
+        XCTAssertEqual(app.staticTexts["concentration"].label,"98.00 × 10⁴")
+        XCTAssertEqual(app.staticTexts["totalCells"].label,"98.00 × 10⁴")
     }
     @MainActor func testEnglishInterfaceAndCredits() {
         let app = launchApp(language:"en")
@@ -64,10 +128,12 @@ final class cellscopeUITests: XCTestCase {
         let zero = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","0 个细胞"),object:live)
         XCTAssertEqual(XCTWaiter.wait(for:[zero],timeout:20),.completed)
         XCTAssertTrue(app.staticTexts["liveConcentration"].label.contains("0"))
-        minimum.adjust(toNormalizedSliderPosition:0)
+        app.buttons["resetDetectionSettings"].tap()
+        XCTAssertEqual(automatic.value as? String,"1")
         let recovered = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label == %@","49 个细胞"),object:live)
         XCTAssertEqual(XCTWaiter.wait(for:[recovered],timeout:20),.completed)
         XCTAssertTrue(app.staticTexts["liveConcentration"].label.contains("98.00"))
+        XCTAssertTrue(app.staticTexts["liveTotalCells"].label.contains("98.00"))
         let shot = XCTAttachment(screenshot:app.screenshot()); shot.name = "Live-parameters"; shot.lifetime = .keepAlways; add(shot)
         app.navigationBars.buttons["完成"].tap()
         XCTAssertFalse(app.alerts.firstMatch.exists)

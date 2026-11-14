@@ -1,5 +1,15 @@
 # Changelog / 更新日志
 
+## 0.5.0
+
+- Made central-grid detection advisory: 4×, 10× and custom mode remain available with the selected frame; the RBC shortcut is optional.
+- Added chamber and detection parameter reset controls.
+- Displayed concentration and total stock cells during corner acquisition, using only the counted squares; preserved partial groups in save/export.
+
+- 中央网格识别仅提供建议，4×、10× 与自定义模式保留当前边框继续计数，可选快捷切换红细胞模式。
+- 增加计数板参数与识别参数重置入口。
+- 四角采集中按已计数大格实时显示浓度、原液总细胞数，支持保存和导出当前计数组。
+
 ## 0.4.0
 
 - Unified the repository, Xcode project, scheme, app, package and release artifact naming under **cellscope**.

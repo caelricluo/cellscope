@@ -1,5 +1,15 @@
 # Verification / 验证记录
 
+## 0.5.0
+
+**English:** 26 core tests and 8 UI workflows passed. A dedicated Debug fixture runs an actual central-grid image through both 4× and 10× counting, recounting, concentration/total display, save and restore. Seven Release workflows cover parameter resets, marker editing, live detection, localization and four-corner averaging. Chamber reset restores numerical inputs while retaining the target count and selected area.
+
+**简体中文：** 26 项核心测试与 8 项 UI 流程通过。专用 Debug 样本使用中央网格图像，验证 4×、10× 均可计数、重新检测、显示浓度与总数，并保存和恢复。7 项 Release 流程验证参数重置、标记编辑、实时识别、本地化和四角平均。计数板重置保留目标细胞数与所选面积。
+
+Test bundles / 测试包：`TestResults/CentralModeChoiceFinal.xcresult`、`TestResults/ModeAndResetRelease.xcresult`。
+
+## 0.4.0
+
 ## English
 
 Version **0.4.0** is verified with Xcode 27.2 and an iPhone 17 Pro simulator running iOS 26.4.

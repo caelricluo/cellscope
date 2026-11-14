@@ -39,8 +39,8 @@ struct CountWorkspace: View {
                     CountingModePanel(model: model)
                     if model.grid.mode == .singleLarge { CornerFieldsPanel(model: model) }
                     acquisition
-                    if model.image != nil {
-                        imageEditor
+                    if model.image != nil { imageEditor }
+                    if model.image != nil || model.capturedFields > 0 {
                         calibration
                         calculation
                     } else { emptyWorkflow }
@@ -176,11 +176,12 @@ struct CountWorkspace: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label(model.gridStatus, systemImage: model.alignment == nil ? "viewfinder" : "checkmark.viewfinder")
                         .font(.caption).foregroundStyle(model.alignment == nil ? Palette.muted : Palette.green)
-                    if model.gridDetection?.central != nil && model.grid.mode != .redBloodCells && model.alignment == nil {
+                        .accessibilityIdentifier("gridDetectionStatus")
+                    if model.gridDetection?.central != nil && model.grid.mode != .redBloodCells {
                         Button(tr("使用中央红细胞计数区")) { model.changeCountingMode(.redBloodCells) }
-                            .font(.caption.weight(.semibold)).disabled(model.isDetecting)
+                            .font(.caption.weight(.semibold)).disabled(model.isDetecting).accessibilityIdentifier("switchToRBC")
                     }
-                }.fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("gridDetectionStatus")
+                }.fixedSize(horizontal: false, vertical: true)
             }
             editingToolbar
             if model.grid.mode.divisions > 1 { GridSquaresPanel(model: model) }
@@ -194,7 +195,7 @@ struct CountWorkspace: View {
                 Button { showDetectionSettings = true } label: { Label(tr("检测参数"), systemImage: "slider.horizontal.3").font(.caption) }.disabled(model.isLocatingGrid)
             }
             Button { model.detect() } label: { Label(model.hasAnalyzed ? tr("重新检测") : tr("自动检测细胞"), systemImage: "scope") }
-                .buttonStyle(PrimaryButton()).disabled(model.isDetecting || model.needsManualGrid).opacity(model.isDetecting || model.needsManualGrid ? 0.5 : 1)
+                .buttonStyle(PrimaryButton()).disabled(model.isDetecting).opacity(model.isDetecting ? 0.5 : 1)
                 .accessibilityIdentifier("detectCells")
             Text(tr("绿色：自动标记 · 橙色：手动补标")).font(.caption2).foregroundStyle(Palette.muted)
         }.surface()
@@ -229,6 +230,10 @@ struct CountWorkspace: View {
     private var calibration: some View {
         VStack(alignment: .leading, spacing: 16) {
             SectionLabel(number: "03", title: tr("计数板与稀释参数"), detail: model.grid.mode == .custom ? tr("填写计数区域的实际面积。") : tr("面积按所选网格计算。"))
+            Button { model.resetChamberParameters() } label: {
+                Label(tr("重置计数板参数"), systemImage: "arrow.counterclockwise")
+            }.font(.caption.weight(.semibold)).accessibilityIdentifier("resetChamberParameters")
+            Text(tr("恢复面积、深度、稀释倍数和原液体积")).font(.caption2).foregroundStyle(Palette.muted)
             TextField(tr("样本名称（可选）"), text: $model.name).font(.subheadline)
                 .padding(12).background(Palette.paper, in: RoundedRectangle(cornerRadius: 11)).focused($inputFocused)
             HStack(spacing: 12) {
@@ -278,7 +283,7 @@ struct CountWorkspace: View {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(tr("原液总细胞数")).font(.caption).foregroundStyle(.white.opacity(0.7))
-                            Text(formatted(result.totalCells)).font(.system(.title3, design: .rounded, weight: .medium))
+                            Text(formatted(result.totalCells)).font(.system(.title3, design: .rounded, weight: .medium)).accessibilityIdentifier("totalCells")
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 6) {
@@ -301,7 +306,7 @@ struct CountWorkspace: View {
             Text(tr("浓度 = 计数 × 稀释倍数 × 1000 ÷ (面积 × 深度)\n取液体积 (µL) = 目标细胞数 ÷ 浓度 × 1000"))
                 .font(.system(size: 10, design: .monospaced)).foregroundStyle(Palette.muted).lineSpacing(4)
             if model.grid.mode == .singleLarge {
-                Text(tr("此处使用四角总计数和总面积 4 mm²；深度为 0.1 mm 时，等价于四角平均计数 × 稀释倍数 × 10⁴。"))
+                Text(trf("fields.calculation", model.completedFields))
                     .font(.caption2).foregroundStyle(Palette.muted)
             }
             Text(tr("计数口径：每个相连细胞团块计作一个对象。")).font(.caption2).foregroundStyle(Palette.muted)
@@ -383,7 +388,10 @@ struct CountWorkspace: View {
                         Text(trf("live.concentration", formatted(result.concentration))).accessibilityIdentifier("liveConcentration")
                         Spacer()
                         Text(result.requiredMicroliters.map { trf("live.volume", formatted($0)) } ?? tr("取液 —"))
-                    }.font(.caption).foregroundStyle(Palette.muted).padding(.horizontal,20).padding(.bottom,10)
+                    }.font(.caption).foregroundStyle(Palette.muted).padding(.horizontal,20).padding(.bottom,6)
+                    Text(trf("live.total_cells", formatted(result.totalCells)))
+                        .font(.caption).foregroundStyle(Palette.muted).padding(.horizontal,20).padding(.bottom,10)
+                        .frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier("liveTotalCells")
                 }
                 Form {
                     Section(tr("局部对比度")) {
@@ -404,7 +412,12 @@ struct CountWorkspace: View {
                     }
                 }
             }.navigationTitle(tr("实时检测参数")).navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button(tr("完成")) { showDetectionSettings = false } } }
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(tr("重置")) { model.resetDetectionSettings() }.accessibilityIdentifier("resetDetectionSettings")
+                    }
+                    ToolbarItem(placement: .confirmationAction) { Button(tr("完成")) { showDetectionSettings = false } }
+                }
                 .onAppear { model.beginParameterEditing() }
         }.presentationDetents([.large])
     }

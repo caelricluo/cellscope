@@ -19,7 +19,7 @@ The packager checks the iPhoneOS platform, arm64 architecture, Mach-O platform m
 
 ```sh
 cd dist
-shasum -a 256 -c cellscope-0.4.0-unsigned.ipa.sha256
+shasum -a 256 -c cellscope-0.5.0-unsigned.ipa.sha256
 ```
 
 For device distribution, configure the development team and provisioning settings in Xcode, create a signed archive and export using the chosen Apple distribution method. Unsigned artifacts are provided for building and subsequent signing.

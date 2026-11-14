@@ -235,3 +235,21 @@
 "面积按所选网格计算。" = "Area is calculated from the selected squares.";
 "项目" = "Item";
 "高亮格计入统计，选择后自动更新。三线边界取中线。" = "Highlighted squares are counted. Selection updates automatically. Use the middle ruling of a triple line.";
+
+/* Mode freedom and reset controls. */
+"重置计数板参数" = "Reset chamber parameters";
+"恢复面积、深度、稀释倍数和原液体积" = "Restore area, depth, dilution and stock volume.";
+"重置" = "Reset";
+"已计数大格平均" = "Mean counted large square";
+"fields.calculation" = "Calculated from the %ld counted large squares and their total area; all four are averaged when complete.";
+"fields.current_mean" = "%ld/4 corners counted · %ld total · %@ cells/square";
+"history.available_corners" = "%ld corners: %ld total · Mean %@ cells/square";
+"live.total_cells" = "Total stock cells %@";
+
+/* Chamber and mode user guide. */
+"four_corner_live_guide" = "Capture or import A1, A3, C1 and C3 in turn, one 1×1 mm large square per image. During acquisition, the mean, concentration and total stock cells use the counted corners. The complete set uses all four. Each image retains its own frame, count and detection settings.";
+"网格识别与模式选择" = "Grid detection and mode selection";
+"central_grid_mode_guide" = "A central-grid detection offers a shortcut to RBC mode. You can continue in 4×, 10× or custom mode. Detection does not change the selected mode; when no matching frame is found, counting continues with the current frame.";
+"恢复计数板与识别参数" = "Reset chamber and detection parameters";
+"parameter_reset_guide" = "Reset chamber parameters restores the selected counting area, 0.1 mm depth, dilution factor 2 and 1 mL stock volume. Images, frames, target count and mode are retained. Reset in Detection settings restores that mode’s default detection parameters.";
+"模式" = "Mode";

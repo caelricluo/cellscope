@@ -23,3 +23,4 @@ dist/
 /task_plan.md
 .local/
 build-sim/
+build-mode-release/

@@ -18,7 +18,6 @@ enum EditMode: String, CaseIterable, Identifiable {
     @Published var region = CountRegion()
     @Published var alignment: GridQuad?
     @Published var gridDetection: GridDetection?
-    @Published private var manualGridRequired = false
     @Published var gridStatus = ""
     @Published var isLocatingGrid = false
     @Published var estimatedDiameterPixels = 0.0
@@ -69,27 +68,30 @@ enum EditMode: String, CaseIterable, Identifiable {
     var calculationInputs: CountInputs {
         var result = inputs
         if let area = grid.areaText { result.area = area }
-        if grid.mode == .singleLarge { result.area = "4" }
+        if grid.mode == .singleLarge { result.area = String(max(1, completedFields)) }
         return result
     }
     var result: CountResult? {
-        let ready = grid.mode == .singleLarge ? completedFields == 4 : hasAnalyzed
-        guard ready, grid.isValid, !needsManualGrid else { return nil }
+        guard grid.isValid else { return nil }
         if grid.mode == .singleLarge {
-            return inputs.calculateFourCorners(counts: FieldPosition.allCases.map { field($0)?.state.markers.count ?? 0 })
+            return inputs.calculateLargeSquares(counts: countedFields.map { $0.state.markers.count })
         }
+        guard hasAnalyzed else { return nil }
         return calculationInputs.calculate(count: totalCount)
     }
-    var completedFields: Int { FieldPosition.allCases.filter { field($0).map { $0.state.hasAnalyzed && $0.state.requiresManualGrid != true } == true }.count }
+    var countedFields: [CapturedField] {
+        FieldPosition.allCases.compactMap { field($0) }.filter { $0.state.hasAnalyzed }
+    }
+    var completedFields: Int { countedFields.count }
     var capturedFields: Int { FieldPosition.allCases.filter { field($0) != nil }.count }
     var totalCount: Int {
-        grid.mode == .singleLarge ? FieldPosition.allCases.reduce(0) { $0 + (field($1)?.state.markers.count ?? 0) } : markers.count
+        grid.mode == .singleLarge ? countedFields.reduce(0) { $0 + $1.state.markers.count } : markers.count
     }
-    var meanCount: Double { Double(totalCount) / 4 }
+    var meanCount: Double { Double(totalCount) / Double(max(1, completedFields)) }
     func field(_ position: FieldPosition) -> CapturedField? {
         if position == activeField, let image {
             return CapturedField(state: CountFieldRecord(position: position, region: region, markers: markers, settings: settings,
-                areaConfirmed: false, reviewed: false, hasAnalyzed: hasAnalyzed, alignment: alignment, requiresManualGrid: manualGridRequired), image: image)
+                areaConfirmed: false, reviewed: false, hasAnalyzed: hasAnalyzed, alignment: alignment, requiresManualGrid: false), image: image)
         }
         return fields[position]
     }
@@ -100,13 +102,13 @@ enum EditMode: String, CaseIterable, Identifiable {
         if let snapshot = fields[position] {
             image = snapshot.image; region = snapshot.state.region; markers = snapshot.state.markers
             replaceSettings(snapshot.state.settings); hasAnalyzed = snapshot.state.hasAnalyzed
-            alignment = snapshot.state.alignment; manualGridRequired = snapshot.state.requiresManualGrid ?? false
+            alignment = snapshot.state.alignment
             estimatedDiameterPixels = ImageMath.median(markers.map { $0.radius * 2 * Double(min(snapshot.image.size.width, snapshot.image.size.height)) })
         } else {
-            image = nil; region = CountRegion(); alignment = nil; manualGridRequired = false; estimatedDiameterPixels = 0; markers = []; replaceSettings(grid.mode.detectionSettings)
+            image = nil; region = CountRegion(); alignment = nil; estimatedDiameterPixels = 0; markers = []; replaceSettings(grid.mode.detectionSettings)
             hasAnalyzed = false
         }
-        gridDetection = nil; gridStatus = manualGridRequired ? tr("点击「边框」调整计数区域") : (alignment == nil ? "" : tr("已恢复此图的自动边框"))
+        gridDetection = nil; gridStatus = alignment == nil ? "" : tr("已恢复此图的自动边框")
         mode = .inspect
     }
     var squareCounts: [Int: Int] { grid.counts(markers, in: region, alignment: alignment) }
@@ -121,13 +123,22 @@ enum EditMode: String, CaseIterable, Identifiable {
     init() {
         do { records = try RecordStore.load() }
         catch { message = trf("error.records", error.localizedDescription) }
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if let i = arguments.firstIndex(of: "--ui-test-central-mode"), i + 1 < arguments.count,
+           let selectedMode = CountingMode(rawValue: arguments[i + 1]) {
+            grid = NeubauerGrid(mode: selectedMode)
+            setImage(ImageService.demo(mode: .redBloodCells), demo: true)
+            locateGrid()
+        }
+        #endif
     }
     func setImage(_ source: UIImage, demo: Bool = false) {
         invalidateDetection()
         if isDemo && !demo { fields = [:]; name = "" }
         fields.removeValue(forKey: activeField)
         image = ImageService.normalized(source)
-        markers = []; undoStack = []; region = CountRegion(); alignment = nil; manualGridRequired = false; gridDetection = nil; gridStatus = ""; estimatedDiameterPixels = 0; hasAnalyzed = false
+        markers = []; undoStack = []; region = CountRegion(); alignment = nil; gridDetection = nil; gridStatus = ""; estimatedDiameterPixels = 0; hasAnalyzed = false
         cachedGray = nil; isDemo = demo; mode = .inspect
         if demo { name = grid.mode == .custom ? tr("模拟样本 · 49 个细胞") : trf("demo.name", grid.mode.title) }
         inputs.area = grid.areaText ?? inputs.area; replaceSettings(grid.mode.detectionSettings)
@@ -147,7 +158,7 @@ enum EditMode: String, CaseIterable, Identifiable {
         inputs.area = grid.areaText ?? "1"; inputs.depth = "0.1"
         invalidateDetection(); markers = []; undoStack = []
         hasAnalyzed = false
-        alignment = nil; manualGridRequired = false; gridDetection = nil; gridStatus = ""
+        alignment = nil; gridDetection = nil; gridStatus = ""
         mode = .region
         if isDemo { loadDemo() }
         else if image != nil { if newMode == .custom { detect() } else { locateGrid() } }
@@ -171,7 +182,7 @@ enum EditMode: String, CaseIterable, Identifiable {
     var frameQuad: GridQuad { alignment ?? GridQuad(region: region) }
     func updateFrame(_ quad: GridQuad) {
         guard quad.isValid else { return }
-        alignment = quad; region = quad.bounds; manualGridRequired = false
+        alignment = quad; region = quad.bounds
         gridStatus = tr("边框已调整")
         scheduleDetection()
     }
@@ -183,11 +194,16 @@ enum EditMode: String, CaseIterable, Identifiable {
         updateFrame(frameQuad.adjusting(activeHandle,
             dx:Double(dx*nudgePixels)/Double(image.size.width),dy:Double(dy*nudgePixels)/Double(image.size.height)))
     }
+    func resetChamberParameters() {
+        inputs.resetChamberParameters(for: grid)
+    }
+    func resetDetectionSettings() {
+        settings = grid.mode.detectionSettings
+    }
     func locateGrid() {
         guard image != nil, let gray = grayImage() else { return }
         invalidateDetection()
         let token = UUID(); revision = token; isDetecting = true; isLocatingGrid = true
-        manualGridRequired = grid.mode != .custom
         gridStatus = tr("正在定位网格…")
         let countingMode = grid.mode
         Task {
@@ -196,22 +212,23 @@ enum EditMode: String, CaseIterable, Identifiable {
             gridDetection = located; gridStatus = located.summary
             isDetecting = false; isLocatingGrid = false
             if let quad = countingMode == .custom ? (located.central ?? located.corner ?? located.overview) : located.alignment(for: countingMode) {
-                alignment = quad; manualGridRequired = false; region = quad.bounds; mode = .inspect
+                alignment = quad; region = quad.bounds; mode = .inspect
                 detect()
             } else {
-                alignment = nil; hasAnalyzed = false; markers = []; mode = .region
+                // Detection is advisory. Keep the selected mode and the user's
+                // current frame when no matching physical grid is located.
                 if located.central != nil { gridStatus = tr("检测到中央网格，可切换红细胞模式") }
+                detect()
             }
         }
     }
-    var needsManualGrid: Bool { manualGridRequired }
     func detect(populateDemoFields: Bool = false) {
         undoStack.append(markers)
         scheduleDetection(delay: 0, populateDemoFields: populateDemoFields)
     }
     /// Debounce rapid changes and publish only the newest image/field/parameter revision.
     private func scheduleDetection(delay: UInt64 = 180_000_000, populateDemoFields: Bool = false) {
-        guard image != nil, !isLocatingGrid, !needsManualGrid else { return }
+        guard image != nil, !isLocatingGrid else { return }
         pendingDetection?.cancel(); runningDetection?.cancel()
         let token = UUID(); revision = token; isDetecting = true
         pendingDetection = Task {
@@ -240,7 +257,7 @@ enum EditMode: String, CaseIterable, Identifiable {
         }
     }
     func tap(x: Double, y: Double) {
-        guard !isDetecting, !needsManualGrid, let image else { return }
+        guard !isDetecting, let image else { return }
         switch mode {
         case .add:
             let r = settings.automaticSize && estimatedDiameterPixels > 0 ? estimatedDiameterPixels / Double(min(image.size.width, image.size.height)) / 2 : settings.minimumDiameter / 2
@@ -268,23 +285,24 @@ enum EditMode: String, CaseIterable, Identifiable {
         markers = previous
     }
     func save() {
-        guard let image, result != nil, !isDetecting else {
+        guard result != nil, !isDetecting else {
             message = tr("正在更新计数或参数尚未完整。"); return
         }
-        let captures = grid.mode == .singleLarge ? FieldPosition.allCases.compactMap { field($0) } : []
+        let captures = grid.mode == .singleLarge ? countedFields : []
+        guard let primary = field(activeField).flatMap({ $0.state.hasAnalyzed ? $0 : nil }) ?? captures.first else { return }
         let record = CountRecord(id: UUID(), date: Date(), name: name.trimmingCharacters(in: .whitespaces).isEmpty ? tr("未命名样本") : name,
-            isDemo: isDemo, region: region, markers: markers, inputs: calculationInputs, settings: settings,
+            isDemo: isDemo, region: primary.state.region, markers: primary.state.markers, inputs: calculationInputs, settings: primary.state.settings,
             areaConfirmed: false, reviewed: false, grid: grid,
-            fields: captures.isEmpty ? nil : captures.map(\.state), activeField: activeField, alignment: alignment)
+            fields: captures.isEmpty ? nil : captures.map(\.state), activeField: primary.state.position, alignment: primary.state.alignment)
         do {
-            try RecordStore.save(record, image: image, records: records, fields: captures)
+            try RecordStore.save(record, image: primary.image, records: records, fields: captures)
             records.insert(record, at: 0); message = tr("已保存到本机记录。")
         } catch { message = trf("error.save", error.localizedDescription) }
     }
     func restore(_ record: CountRecord) {
         guard let restoredImage = RecordStore.image(for: record) else { message = tr("记录图片无法读取。"); return }
         invalidateDetection(); image = restoredImage
-        region = record.region; alignment = record.alignment; manualGridRequired = record.requiresManualGrid ?? false; gridDetection = nil; gridStatus = manualGridRequired ? tr("点击「边框」调整计数区域") : (alignment == nil ? "" : tr("已恢复此图的自动边框")); grid = record.grid ?? NeubauerGrid(mode: .custom)
+        region = record.region; alignment = record.alignment; gridDetection = nil; gridStatus = alignment == nil ? "" : tr("已恢复此图的自动边框"); grid = record.grid ?? NeubauerGrid(mode: .custom)
         activeField = record.activeField ?? .topLeft
         fields = [:]
         for field in record.fields ?? [] {
@@ -304,13 +322,13 @@ enum EditMode: String, CaseIterable, Identifiable {
         catch { message = trf("error.delete", error.localizedDescription) }
     }
     func export() {
-        guard let image, let result, !isDetecting else { return }
+        guard let result, !isDetecting else { return }
         func csv(_ text: String) -> String { "\"" + text.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
         let rows: [[String]] = [
             [tr("项目"), tr("数值"), tr("单位")], [tr("样本"), name, ""], [tr("模拟数据"), isDemo ? tr("是") : tr("否"), ""],
             [tr("导出时间"), ISO8601DateFormatter().string(from: Date()), ""],
             [tr("计数模式"), grid.mode.title, ""],
-            [tr("计数格"), grid.mode == .singleLarge ? "A1;A3;C1;C3" : grid.selectedIndices.sorted().map { grid.label($0) }.joined(separator: ";"), ""],
+            [tr("计数格"), grid.mode == .singleLarge ? countedFields.map { $0.state.position.rawValue }.joined(separator: ";") : grid.selectedIndices.sorted().map { grid.label($0) }.joined(separator: ";"), ""],
             [tr("当前图边框定位"), alignment == nil ? tr("矩形") : tr("四边形"), ""],
             [tr("边界规则"), tr("记上不记下，记左不记右"), ""], [tr("团块规则"), tr("每个相连团块计作一个对象"), ""],
             [tr("细胞数"), String(totalCount), tr("个")],
@@ -319,7 +337,7 @@ enum EditMode: String, CaseIterable, Identifiable {
             [tr("浓度"), String(result.concentration), "cells/mL"], [tr("原液总细胞数"), String(result.totalCells), tr("个")],
             [tr("目标细胞数"), inputs.target, tr("个")], [tr("所需原液体积"), result.requiredMicroliters.map { String($0) } ?? tr("无法计算"), "µL"]
         ] + (grid.mode == .singleLarge
-            ? FieldPosition.allCases.map { ["\($0.title) \($0.rawValue)", String(field($0)?.state.markers.count ?? 0), tr("个")] } + [[tr("四角平均计数"), String(meanCount), tr("个/大格")]]
+            ? countedFields.map { ["\($0.state.position.title) \($0.state.position.rawValue)", String($0.state.markers.count), tr("个")] } + [[tr("已计数大格平均"), String(meanCount), tr("个/大格")]]
             : grid.selectedIndices.sorted().map { [trf("export.square", grid.label($0)), String(squareCounts[$0, default: 0]), tr("个")] })
         do {
             let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -329,14 +347,15 @@ enum EditMode: String, CaseIterable, Identifiable {
             try output.write(to: report, atomically: true, encoding: .utf8)
             var files = [report]
             if grid.mode == .singleLarge {
-                for position in FieldPosition.allCases {
-                    guard let field = field(position) else { continue }
+                for field in countedFields {
+                    let position = field.state.position
                     let url = folder.appendingPathComponent("\(isDemo ? "demo-" : "")\(position.rawValue).jpg")
                     let annotated = ImageService.annotated(field.image, markers: field.state.markers, region: field.state.region, grid: grid, alignment: field.state.alignment)
                     guard let data = annotated.jpegData(compressionQuality: 0.92) else { throw CocoaError(.fileWriteUnknown) }
                     try data.write(to: url, options: .atomic); files.append(url)
                 }
             } else {
+                guard let image else { return }
                 let photo = folder.appendingPathComponent(isDemo ? "cellscope-demo.jpg" : "cellscope-annotations.jpg")
                 guard let data = ImageService.annotated(image, markers: markers, region: region, grid: grid, alignment: alignment).jpegData(compressionQuality: 0.92) else {
                     throw CocoaError(.fileWriteUnknown)

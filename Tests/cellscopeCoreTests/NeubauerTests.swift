@@ -76,4 +76,35 @@ final class NeubauerTests: XCTestCase {
         XCTAssertNil(restored.extent)
         XCTAssertEqual(restored.x, original.x)
     }
+    func testAvailableCornerMeanAndTotalUseOnlyCountedArea() throws {
+        var inputs = CountInputs(); inputs.suspensionVolume = "0.5"
+        let single = try XCTUnwrap(inputs.calculateLargeSquares(counts:[40]))
+        XCTAssertEqual(single.concentration,800_000,accuracy:1e-8)
+        XCTAssertEqual(single.totalCells,400_000,accuracy:1e-8)
+        let pair = try XCTUnwrap(inputs.calculateLargeSquares(counts:[40,60]))
+        XCTAssertEqual(pair.concentration,1_000_000,accuracy:1e-8)
+        XCTAssertEqual(pair.totalCells,500_000,accuracy:1e-8)
+        XCTAssertEqual(try XCTUnwrap(pair.requiredMicroliters),100,accuracy:1e-8)
+        let complete = try XCTUnwrap(inputs.calculateLargeSquares(counts:[40,50,60,70]))
+        XCTAssertEqual(complete.concentration,try XCTUnwrap(inputs.calculateFourCorners(counts:[40,50,60,70])).concentration)
+        XCTAssertNil(inputs.calculateLargeSquares(counts:[]))
+        XCTAssertNil(inputs.calculateLargeSquares(counts:[-1]))
+        XCTAssertNil(inputs.calculateLargeSquares(counts:[1,2,3,4,5]))
+        XCTAssertNil(inputs.calculateLargeSquares(counts:[Int.max,1]))
+    }
+    func testChamberResetRestoresNumbersAndPreservesTargetAndSelectedArea() {
+        for grid in [NeubauerGrid(mode:.custom),NeubauerGrid(mode:.redBloodCells),
+                     NeubauerGrid(mode:.overview,selectedIndices:[0,2,6,8])] {
+            var inputs = CountInputs()
+            inputs.area = "99"; inputs.depth = "0.7"; inputs.dilution = "200"
+            inputs.suspensionVolume = "0.05"; inputs.target = "250000"
+            inputs.resetChamberParameters(for:grid)
+            XCTAssertEqual(inputs.area,grid.areaText ?? "1")
+            XCTAssertEqual(inputs.depth,"0.1")
+            XCTAssertEqual(inputs.dilution,"2")
+            XCTAssertEqual(inputs.suspensionVolume,"1")
+            XCTAssertEqual(inputs.target,"250000")
+        }
+    }
+
 }

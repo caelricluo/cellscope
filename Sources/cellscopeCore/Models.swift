@@ -88,8 +88,16 @@ public struct CountInputs: Codable, Equatable, Sendable {
         return CountResult(concentration: concentration, totalCells: total,
                            requiredMicroliters: required, availableMicroliters: volume * 1000)
     }
-    public func calculateFourCorners(counts: [Int]) -> CountResult? {
-        guard counts.count == 4, counts.allSatisfy({ $0 >= 0 }) else { return nil }
+    public mutating func resetChamberParameters(for grid: NeubauerGrid) {
+        let defaults = CountInputs()
+        area = grid.areaText ?? defaults.area
+        depth = defaults.depth
+        dilution = defaults.dilution
+        suspensionVolume = defaults.suspensionVolume
+    }
+    /// Mean across the available 1 mm² large squares; a complete set has four.
+    public func calculateLargeSquares(counts: [Int]) -> CountResult? {
+        guard (1...4).contains(counts.count), counts.allSatisfy({ $0 >= 0 }) else { return nil }
         var total = 0
         for count in counts {
             let next = total.addingReportingOverflow(count)
@@ -97,9 +105,14 @@ public struct CountInputs: Codable, Equatable, Sendable {
             total = next.partialValue
         }
         var inputs = self
-        inputs.area = "4" // Sum / 4 mm² equals mean / 1 mm²; no rounding of the mean.
+        inputs.area = String(counts.count)
         return inputs.calculate(count: total)
     }
+    public func calculateFourCorners(counts: [Int]) -> CountResult? {
+        guard counts.count == 4 else { return nil }
+        return calculateLargeSquares(counts: counts)
+    }
+
 }
 
 public struct CountResult: Sendable {

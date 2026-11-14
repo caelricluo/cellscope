@@ -50,7 +50,7 @@ struct CornerFieldsPanel: View {
             HStack {
                 Text(tr("10× 四角采集")).font(.headline).foregroundStyle(Palette.ink)
                 Spacer()
-                Text(trf("fields.counted", model.completedFields)).font(.caption.monospacedDigit()).foregroundStyle(Palette.green)
+                Text(trf("fields.counted", model.completedFields)).font(.caption.monospacedDigit()).foregroundStyle(Palette.green).accessibilityIdentifier("countedFields")
             }
             HStack(spacing: 6) {
                 ForEach(FieldPosition.allCases) { position in
@@ -69,8 +69,8 @@ struct CornerFieldsPanel: View {
             }
             Text(trf("field.current", model.activeField.title))
                 .font(.caption2).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
-            if model.completedFields == 4 {
-                Text(trf("fields.mean", model.totalCount, formatted(model.meanCount)))
+            if model.completedFields > 0 {
+                Text(trf("fields.current_mean", model.completedFields, model.totalCount, formatted(model.meanCount)))
                     .font(.caption.weight(.medium)).foregroundStyle(Palette.green).accessibilityIdentifier("fourFieldMean")
             }
         }.surface().disabled(model.isDetecting)

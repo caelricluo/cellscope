@@ -43,9 +43,9 @@ struct HistoryView: View {
         }
     }
     private func summary(_ record: CountRecord) -> String {
-        if let fields = record.fields, fields.count == 4 {
+        if let fields = record.fields, !fields.isEmpty {
             let sum = fields.reduce(0) { $0 + $1.markers.count }
-            return trf("history.corners", sum, formatted(Double(sum) / 4))
+            return trf("history.available_corners", fields.count, sum, formatted(Double(sum) / Double(fields.count)))
         }
         return trf("cell_count", record.markers.count)
     }
