@@ -1,5 +1,21 @@
 # Changelog / 更新日志
 
+## 0.7.0 — Android
+
+- Added a native Kotlin/Jetpack Compose Android application for Android 8.0 and later.
+- Ported grid detection, noise-adaptive bright/dark cell detection, projective geometry and counting rules to a tested Kotlin core.
+- Added camera and Photo Picker acquisition, four counting modes, live parameter preview, magnified frame editing and one/five-pixel nudges.
+- Added independent concentration, total-cell and volume calculations, lossless PNG records, session restoration and CSV/annotation sharing.
+- Included English and Simplified Chinese, parameter reset controls and @caelricluo / Codex GPT-6.1 Sol attribution.
+- Published an installable development-signed, non-debuggable APK and an unsigned APK. iOS remains at 0.6.1.
+
+- 新增 Kotlin / Jetpack Compose 原生 Android 应用，支持 Android 8.0 及以上。
+- 移植网格定位、噪声自适应亮暗细胞检测、透视几何与计数规则，并提供 Kotlin 核心回归测试。
+- 支持相机、系统照片选择器、四种计数模式、实时调参、放大框选与 1/5 像素微调。
+- 支持独立更新的浓度、细胞总数和取液量计算，以及 PNG 无损样本、工作区恢复、CSV 与标记图分享。
+- 提供中英文界面、参数重置及 @caelricluo / Codex GPT-6.1 Sol 署名。
+- 提供可安装的开发证书签名非调试 APK 和未签名 APK；iOS 保持 0.6.1。
+
 ## 0.6.1
 
 - Kept concentration, total cells and required volume independent while editing stock volume or target count; omitted non-finite derived values.

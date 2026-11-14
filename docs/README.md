@@ -4,6 +4,7 @@ Each document contains English and Simplified Chinese sections.
 
 以下文档均包含英文与简体中文内容。
 
+- [Android / Android 指南](android.md)
 - [User guide / 使用指南](user-guide.md)
 - [Development / 开发指南](development.md)
 - [Algorithm and calculations / 算法与计算](algorithm.md)

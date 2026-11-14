@@ -26,3 +26,13 @@ build-sim/
 build-mode-release/
 
 build-low-contrast/
+
+# Android local configuration, caches and packages
+android/.gradle/
+android/.kotlin/
+android/**/build/
+android/local.properties
+*.apk
+*.aab
+*.jks
+*.keystore

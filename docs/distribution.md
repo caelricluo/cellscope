@@ -2,6 +2,8 @@
 
 ## English
 
+For Android APK downloads, builds and signing, see [Android](android.md). Version 0.7.0 adds Android; the iOS package remains available in release 0.6.1.
+
 Build the unsigned iPhoneOS arm64 package on macOS:
 
 ```sh
@@ -27,6 +29,8 @@ For device distribution, configure the development team and provisioning setting
 Current source and releases: [caelricluo/cellscope](https://github.com/caelricluo/cellscope).
 
 ## 简体中文
+
+Android APK 下载、构建与签名见 [Android 指南](android.md)。0.7.0 新增 Android，iOS 安装包保留在 0.6.1 发行页。
 
 在 macOS 上执行上述脚本，生成未签名 iPhoneOS arm64 IPA、JSON 清单和 SHA-256 文件。产物路径及校验命令见上文。
 

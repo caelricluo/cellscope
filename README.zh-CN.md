@@ -2,7 +2,7 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-**cellscope** 是原生 iOS 显微图像细胞计数应用，面向改良 Neubauer 血细胞计数板。应用在设备上完成网格定位、可编辑细胞识别、浓度计算和悬液取液规划。
+**cellscope** 是原生 iOS 与 Android 显微图像细胞计数应用，面向改良 Neubauer 血细胞计数板。应用在设备上完成网格定位、可编辑细胞识别、浓度计算和悬液取液规划。
 
 ## 功能
 
@@ -19,7 +19,9 @@
 
 ## 开始使用
 
-最低系统版本为 **iOS 17**。开发与打包需要 macOS、Xcode 和 iOS SDK。
+支持 **iOS 17+** 和 **Android 8.0+**。Android APK 可从 [GitHub Releases](https://github.com/caelricluo/cellscope/releases/tag/v0.7.0) 下载。
+
+iOS 开发与打包使用 macOS、Xcode 和 iOS SDK：
 
 ```sh
 git clone https://github.com/caelricluo/cellscope.git
@@ -30,6 +32,15 @@ open cellscope.xcodeproj
 选择 **cellscope** scheme 和 iPhone 模拟器或设备。选择计数模式后拍摄、导入图像或载入演示样本。边框、标记和计算参数发生变化时，结果自动更新。
 
 在 Mac 上运行 `Open cellscope.command` 可启动 Catalyst 预览。预览使用相同应用代码，并提供本机图像文件导入入口。
+
+Android 开发使用 Android Studio 打开 `android/`，配置 JDK 17 或 21 和 Android SDK 36，并运行：
+
+```sh
+cd android
+./gradlew :app:assemblePreview
+```
+
+可安装 APK 位于 `app/build/outputs/apk/preview/app-preview.apk`。编译、测试与签名命令见 [Android 指南](docs/android.md)。
 
 ## 计数模式
 
@@ -62,7 +73,7 @@ scripts/build_unsigned_ipa.sh
 
 ## 文档
 
-[使用指南](docs/user-guide.md) · [开发指南](docs/development.md) · [算法与计算](docs/algorithm.md) · [验证记录](docs/verification.md) · [更新日志](CHANGELOG.md)
+[Android 指南](docs/android.md) · [使用指南](docs/user-guide.md) · [开发指南](docs/development.md) · [算法与计算](docs/algorithm.md) · [验证记录](docs/verification.md) · [更新日志](CHANGELOG.md)
 
 安装包位于 [GitHub Releases](https://github.com/caelricluo/cellscope/releases)。
 

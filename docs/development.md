@@ -2,7 +2,9 @@
 
 ## English
 
-The application targets iOS 17+ and uses SwiftUI, UIKit and Foundation. The image-processing core has no third-party dependencies.
+For Kotlin/Compose setup, Android tests and APK builds, see the [Android guide](android.md).
+
+The iOS application targets iOS 17+ and uses SwiftUI, UIKit and Foundation. The image-processing core has no third-party dependencies.
 
 ```text
 cellscope/                    Application, views, image services and records
@@ -41,6 +43,8 @@ swiftc -O Sources/cellscopeCore/*.swift scripts/analyze_image.swift -o /tmp/cell
 The optional arguments select counting mode, sensitivity (`0...1`) and polarity (`automatic`, `dark`, `bright`). JSON includes grid geometry, detection settings, markers and rejection totals. Counts are populated when an automatic reference is available for the requested mode.
 
 ## 简体中文
+
+Kotlin / Compose 工程、Android 测试和 APK 打包见 [Android 指南](android.md)。
 
 应用面向 iOS 17 及以上，使用 SwiftUI、UIKit 和 Foundation。图像处理核心无第三方依赖，目录结构和验证命令见上文。
 

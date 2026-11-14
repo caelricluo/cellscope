@@ -1,5 +1,19 @@
 # Verification / 验证记录
 
+## 0.7.0 — Android
+
+**English:** 35 Kotlin core tests and 13 Android instrumented workflows passed on an Android 16/API 36 arm64 emulator. Workflows cover system camera capture, repeat import through Photo Picker, four-corner averaging, full-grid/RBC selections, unrestricted modes after central-grid detection, live sensitivity/polarity/diameter controls, independent calculation inputs, frame nudges/reset, native canvas marker taps, history/CSV/PNG/session persistence, Chinese UI and attribution. Image-adapter tests cover all eight EXIF orientations and transparent-image normalization. Saved PNG pixels match the normalized source.
+
+The low-contrast microscopy reference produces the same corner coordinates and 336 candidate objects at maximum sensitivity as the Swift implementation when both process the same grayscale image. Raw microscopy files remain outside version control. Synthetic UI captures are included in the Android guide.
+
+Preview and unsigned Release APKs build successfully. Android Lint reports zero errors. Packaging checks verify SDK 26/36, package ID, version, non-debuggable configuration, signature state and ZIP integrity. The installable APK was installed and launched separately after tests. English/Chinese each contain 152 Android string keys; the existing 238-key iOS localization check and 35 Swift core tests also pass.
+
+**简体中文：** Android 16 / API 36 arm64 模拟器上，35 项 Kotlin 核心测试与 13 项设备流程测试通过，覆盖系统相机、系统相册重复导入、四角平均、九宫格与红细胞选格、中央网格识别后自由切换模式、实时灵敏度/明暗/直径调整、计算输入独立性、边框微调重置、原生画布补标删除、记录/CSV/PNG/工作区恢复、中英文与署名。图像适配器覆盖八种 EXIF 方向和透明图像归一化；保存的 PNG 像素与归一化源图一致。
+
+在相同灰度输入下，低对比度显微参考图的四角网格坐标及最高灵敏度下的 336 个候选对象与 Swift 实现一致。显微原图保留在版本控制之外，Android 指南附合成图界面截图。
+
+已签名 Preview 与未签名 Release APK 编译通过，Android Lint 为零错误。打包检查验证 SDK 26/36、包名、版本、非调试配置、签名状态和 ZIP 完整性，安装包经独立安装启动验证。中英文各 152 个 Android 文案键，既有 iOS 的 238 键校验与 35 项 Swift 核心测试继续通过。
+
 ## 0.6.1
 
 **English:** 35 core tests and 14 UI workflows passed. New coverage checks independent calculation inputs, finite output values, linked diameter limits, repeat import of the same photo, manual-marker export and sample-image persistence. The previous counting, localization, frame-editing, reset, four-corner mean, central-grid mode choice and live faint-cell workflows remain covered.

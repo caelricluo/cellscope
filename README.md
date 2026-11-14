@@ -2,7 +2,7 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-**cellscope** is a native iOS application for counting cells in microscope images of improved Neubauer hemocytometers. It combines grid alignment, editable cell detection, concentration calculations and suspension volume planning in an on-device workflow.
+**cellscope** is a native iOS and Android application for counting cells in microscope images of improved Neubauer hemocytometers. It combines grid alignment, editable cell detection, concentration calculations and suspension volume planning in an on-device workflow.
 
 ## Features
 
@@ -19,7 +19,9 @@
 
 ## Get started
 
-Requires **iOS 17+**. Development and packaging require macOS and Xcode with an iOS SDK.
+Requires **iOS 17+** or **Android 8.0+**. Android APK downloads are available from [GitHub Releases](https://github.com/caelricluo/cellscope/releases/tag/v0.7.0).
+
+For iOS development, use macOS and Xcode with an iOS SDK:
 
 ```sh
 git clone https://github.com/caelricluo/cellscope.git
@@ -30,6 +32,15 @@ open cellscope.xcodeproj
 Select the **cellscope** scheme and an iPhone simulator or device. Choose a counting mode, then capture/import an image or load a demo sample. Results update automatically as the frame, markers and calculation parameters change.
 
 For a desktop preview, run `Open cellscope.command`. The Mac Catalyst preview uses the same application code and also supports importing a local image file.
+
+For Android development, open `android/` in Android Studio with JDK 17 or 21, install Android SDK 36 and build with the included Gradle wrapper:
+
+```sh
+cd android
+./gradlew :app:assemblePreview
+```
+
+The installable APK is generated at `app/build/outputs/apk/preview/app-preview.apk`. See the [Android guide](docs/android.md) for build, test and signing commands.
 
 ## Counting modes
 
@@ -62,7 +73,7 @@ The packaging script creates an unsigned iPhoneOS arm64 IPA, a JSON manifest and
 
 ## Documentation
 
-[User guide](docs/user-guide.md) · [Development](docs/development.md) · [Algorithm and calculations](docs/algorithm.md) · [Verification](docs/verification.md) · [Changelog](CHANGELOG.md)
+[Android](docs/android.md) · [User guide](docs/user-guide.md) · [Development](docs/development.md) · [Algorithm and calculations](docs/algorithm.md) · [Verification](docs/verification.md) · [Changelog](CHANGELOG.md)
 
 Releases are available from [GitHub Releases](https://github.com/caelricluo/cellscope/releases).
 
