@@ -30,7 +30,7 @@ struct GuideView: View {
                     }.font(.subheadline).foregroundStyle(Palette.muted).surface()
                     VStack(alignment: .leading, spacing: 12) {
                         Text("cellscope").font(.headline).foregroundStyle(Palette.ink)
-                        Text(tr("作者") + ": caelricluo")
+                        Text(tr("作者") + ": @caelricluo").accessibilityIdentifier("authorCredit")
                         Text(tr("共同作者") + ": Codex GPT-6.1 Sol").accessibilityIdentifier("coauthorCredit")
                         Link("GitHub", destination: URL(string: "https://github.com/caelricluo/cellscope")!)
                         Label(tr("模拟图与参考"), systemImage: "book").font(.headline).foregroundStyle(Palette.ink)

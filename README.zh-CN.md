@@ -68,7 +68,7 @@ scripts/build_unsigned_ipa.sh
 
 ## 作者
 
-- 作者：[caelricluo](https://github.com/caelricluo)
+- 作者：[@caelricluo](https://github.com/caelricluo)
 - 共同作者 / Co-author：**Codex GPT-6.1 Sol**
 
 参见 [AUTHORS.md](AUTHORS.md) 和[贡献指南](CONTRIBUTING.md)。

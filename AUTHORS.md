@@ -4,7 +4,7 @@
 
 | Role / 角色 | Name / 名称 |
 | --- | --- |
-| Author / 作者 | [caelricluo](https://github.com/caelricluo) |
+| Author / 作者 | [@caelricluo](https://github.com/caelricluo) |
 | Co-author / 共同作者 | **Codex GPT-6.1 Sol** |
 
 This attribution is also included in the application's User guide.

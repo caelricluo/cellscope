@@ -230,6 +230,7 @@ final class cellscopeUITests: XCTestCase {
         let credit = app.staticTexts["coauthorCredit"]
         for _ in 0..<8 where !credit.isHittable { app.swipeUp() }
         XCTAssertTrue(credit.label.contains("Codex GPT-6.1 Sol"))
+        XCTAssertTrue(app.staticTexts["authorCredit"].label.contains("@caelricluo"))
     }
     @MainActor private func visible(_ query: XCUIElementQuery) -> XCUIElement {
         query.allElementsBoundByIndex.first(where: { $0.isHittable }) ?? query.firstMatch

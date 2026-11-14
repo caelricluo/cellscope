@@ -50,7 +50,7 @@ def package(archive: Path, output: Path) -> Path:
         "artifact": ipa.name,
         "displayName": info["CFBundleDisplayName"],
         "languages": info.get("CFBundleLocalizations", []),
-        "author": "caelricluo",
+        "author": "@caelricluo",
         "coAuthor": "Codex GPT-6.1 Sol",
         "version": version,
         "build": info["CFBundleVersion"],

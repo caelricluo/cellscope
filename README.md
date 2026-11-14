@@ -68,7 +68,7 @@ Releases are available from [GitHub Releases](https://github.com/caelricluo/cell
 
 ## Authors
 
-- Author: [caelricluo](https://github.com/caelricluo)
+- Author: [@caelricluo](https://github.com/caelricluo)
 - Co-author: **Codex GPT-6.1 Sol**
 
 See [AUTHORS.md](AUTHORS.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
